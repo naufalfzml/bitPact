@@ -18,13 +18,15 @@ contract DeployBitPatchVault is Script {
     function run() external {
         // Read admin wallet address from environment
         address adminWallet = vm.envAddress("ADMIN_WALLET_ADDRESS");
+        // Read cUSD token address from environment
+        address cUSDToken = vm.envAddress("CUSD_TOKEN_ADDRESS");
 
         vm.startBroadcast();
 
-        BitPatchVault vault = new BitPatchVault(adminWallet, CUSD_ALFAJORES);
+        BitPatchVault vault = new BitPatchVault(adminWallet, cUSDToken);
         console.log("BitPatchVault deployed at:", address(vault));
         console.log("Admin wallet:", adminWallet);
-        console.log("cUSD token:", CUSD_ALFAJORES);
+        console.log("cUSD token:", cUSDToken);
 
         vm.stopBroadcast();
     }
