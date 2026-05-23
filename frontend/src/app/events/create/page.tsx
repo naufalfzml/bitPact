@@ -16,6 +16,11 @@ export default function CreateEventPage() {
   const [photoRequired, setPhotoRequired] = useState(false);
   const [consensusThreshold, setConsensusThreshold] = useState(51);
 
+  // Private Events state
+  const [accessType, setAccessType] = useState<"public" | "password" | "invite_only">("public");
+  const [eventPassword, setEventPassword] = useState("");
+  const [whitelistInput, setWhitelistInput] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,9 +34,18 @@ export default function CreateEventPage() {
       setError("Please fill out all required fields!");
       return;
     }
+    if (accessType === "password" && !eventPassword.trim()) {
+      setError("Password is required for password-protected events!");
+      return;
+    }
 
     setLoading(true);
     setError(null);
+
+    // Parse whitelist addresses from comma-separated input
+    const whitelist = accessType === "invite_only"
+      ? whitelistInput.split(",").map((s) => s.trim()).filter(Boolean)
+      : undefined;
 
     try {
       const res = await fetch(`${API_BASE_URL}/events`, {
@@ -45,6 +59,9 @@ export default function CreateEventPage() {
           photo_required: photoRequired,
           consensus_threshold: Number(consensusThreshold),
           creator_address: address,
+          access_type: accessType,
+          password: accessType === "password" ? eventPassword.trim() : undefined,
+          whitelist,
         }),
       });
 
@@ -141,6 +158,65 @@ export default function CreateEventPage() {
               disabled={loading}
             />
           </div>
+
+          {/* Access Type */}
+          <div className="bp-field">
+            <label className="bp-label">Access Type *</label>
+            <select
+              className="bp-select"
+              value={accessType}
+              onChange={(e) => setAccessType(e.target.value as any)}
+              disabled={loading}
+            >
+              <option value="public">■ PUBLIC — Open to Everyone</option>
+              <option value="password">■ PRIVATE: PASSWORD — Room Code Required</option>
+              <option value="invite_only">■ PRIVATE: INVITE ONLY — Whitelist Only</option>
+            </select>
+          </div>
+
+          {/* Password Input (only if Password access) */}
+          {accessType === "password" && (
+            <div className="bp-field">
+              <label className="bp-label">Room Password *</label>
+              <input
+                type="text"
+                className="bp-input"
+                placeholder="Enter a secret room code for participants"
+                value={eventPassword}
+                onChange={(e) => setEventPassword(e.target.value)}
+                required
+                disabled={loading}
+                style={{ letterSpacing: "2px" }}
+              />
+              <p className="bp-text-xs bp-text-muted" style={{ marginTop: "4px" }}>
+                Share this room code privately with your intended players.
+              </p>
+            </div>
+          )}
+
+          {/* Whitelist Builder (only if Invite-Only access) */}
+          {accessType === "invite_only" && (
+            <div className="bp-field">
+              <label className="bp-label">Invite Wallet Addresses</label>
+              <textarea
+                className="bp-input"
+                placeholder={"0xAddress1, 0xAddress2, 0xAddress3..."}
+                value={whitelistInput}
+                onChange={(e) => setWhitelistInput(e.target.value)}
+                disabled={loading}
+                rows={4}
+                style={{
+                  resize: "vertical",
+                  fontFamily: "var(--bp-font)",
+                  fontSize: "0.5rem",
+                  lineHeight: "1.6",
+                }}
+              />
+              <p className="bp-text-xs bp-text-muted" style={{ marginTop: "4px" }}>
+                Comma-separated wallet addresses. You can also add more invitees later from the event detail page.
+              </p>
+            </div>
+          )}
 
           {/* Consensus Threshold */}
           <div className="bp-field">

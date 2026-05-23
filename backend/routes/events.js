@@ -1,9 +1,17 @@
 const express = require("express");
+const bcrypt = require("bcryptjs");
 const { supabase } = require("../lib/supabase");
-const { vaultContract, uuidToBytes32 } = require("../lib/blockchain");
-const { ethers } = require("ethers");
+const {
+  publicClient,
+  walletClient,
+  VAULT_ABI,
+  uuidToBytes32,
+  parseEther,
+} = require("../lib/blockchain");
 
 const router = express.Router();
+
+const VAULT_ADDRESS = process.env.VAULT_CONTRACT_ADDRESS;
 
 // ──────────────────────────────────────────────
 //  POST /api/events — Create tournament
@@ -18,6 +26,9 @@ router.post("/", async (req, res) => {
       photo_required = false,
       consensus_threshold = 51,
       creator_address,
+      access_type = "public",
+      password,
+      whitelist,
     } = req.body;
 
     // Validate required fields
@@ -26,6 +37,18 @@ router.post("/", async (req, res) => {
     }
     if (!["1v1", "team", "ffa"].includes(game_mode)) {
       return res.status(400).json({ error: "game_mode must be '1v1', 'team', or 'ffa'" });
+    }
+    if (!["public", "password", "invite_only"].includes(access_type)) {
+      return res.status(400).json({ error: "access_type must be 'public', 'password', or 'invite_only'" });
+    }
+
+    // Hash password if access_type is password
+    let passwordHash = null;
+    if (access_type === "password") {
+      if (!password || typeof password !== "string" || password.trim().length === 0) {
+        return res.status(400).json({ error: "Password is required for password-protected events" });
+      }
+      passwordHash = await bcrypt.hash(password.trim(), 10);
     }
 
     // Insert event into Supabase
@@ -39,24 +62,44 @@ router.post("/", async (req, res) => {
         photo_required,
         consensus_threshold,
         creator_address,
+        access_type,
+        password_hash: passwordHash,
       })
       .select()
       .single();
 
     if (dbError) throw dbError;
 
-    // Create event on-chain via admin wallet
+    // Save whitelist addresses for invite-only events
+    if (access_type === "invite_only" && Array.isArray(whitelist) && whitelist.length > 0) {
+      const whitelistInserts = whitelist
+        .filter((addr) => typeof addr === "string" && addr.trim().length > 0)
+        .map((addr) => ({
+          event_id: event.id,
+          wallet_address: addr.trim().toLowerCase(),
+        }));
+
+      if (whitelistInserts.length > 0) {
+        const { error: wlError } = await supabase
+          .from("event_whitelist")
+          .insert(whitelistInserts);
+        if (wlError) console.error("Whitelist insert warning:", wlError);
+      }
+    }
+
+    // Create event on-chain via admin wallet (Viem writeContract)
     const eventIdBytes32 = uuidToBytes32(event.id);
-    const ticketPriceWei = ethers.parseEther(String(ticket_price));
+    const ticketPriceWei = parseEther(String(ticket_price));
 
-    const tx = await vaultContract.createEvent(
-      eventIdBytes32,
-      ticketPriceWei,
-      creator_address
-    );
-    await tx.wait();
+    const txHash = await walletClient.writeContract({
+      address: VAULT_ADDRESS,
+      abi: VAULT_ABI,
+      functionName: "createEvent",
+      args: [eventIdBytes32, ticketPriceWei, creator_address],
+    });
+    await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-    res.status(201).json({ event, txHash: tx.hash });
+    res.status(201).json({ event, txHash });
   } catch (err) {
     console.error("POST /api/events error:", err);
     res.status(500).json({ error: err.message });
@@ -152,7 +195,7 @@ router.get("/:id", async (req, res) => {
 router.post("/:id/register", async (req, res) => {
   try {
     const { id } = req.params;
-    const { wallet_address, tx_hash } = req.body;
+    const { wallet_address, tx_hash, password } = req.body;
 
     if (!wallet_address || !tx_hash) {
       return res.status(400).json({ error: "Missing wallet_address or tx_hash" });
@@ -168,6 +211,36 @@ router.post("/:id/register", async (req, res) => {
     if (eventErr || !event) return res.status(404).json({ error: "Event not found" });
     if (event.status !== "setup") {
       return res.status(400).json({ error: "Event registration is closed" });
+    }
+
+    // ── Creator Restriction Guard ──
+    if (wallet_address.toLowerCase() === event.creator_address.toLowerCase()) {
+      return res.status(403).json({ error: "Kreator tidak diizinkan untuk mendaftar ke turnamen buatan sendiri" });
+    }
+
+    // ── Password Validation Guard ──
+    if (event.access_type === "password") {
+      if (!password || typeof password !== "string") {
+        return res.status(400).json({ error: "Password diperlukan untuk turnamen ini" });
+      }
+      const passwordValid = await bcrypt.compare(password, event.password_hash);
+      if (!passwordValid) {
+        return res.status(403).json({ error: "Password turnamen tidak valid" });
+      }
+    }
+
+    // ── Invite-Only Whitelist Guard ──
+    if (event.access_type === "invite_only") {
+      const { data: whitelistEntry } = await supabase
+        .from("event_whitelist")
+        .select("id")
+        .eq("event_id", id)
+        .eq("wallet_address", wallet_address.toLowerCase())
+        .single();
+
+      if (!whitelistEntry) {
+        return res.status(403).json({ error: "Anda tidak diundang ke turnamen ini" });
+      }
     }
 
     // Check duplicate registration
@@ -192,6 +265,90 @@ router.post("/:id/register", async (req, res) => {
     res.status(201).json(participant);
   } catch (err) {
     console.error("POST /api/events/:id/register error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  GET /api/events/:id/whitelist/check — Check if wallet is whitelisted
+// ──────────────────────────────────────────────
+router.get("/:id/whitelist/check", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { wallet } = req.query;
+
+    if (!wallet) {
+      return res.status(400).json({ error: "Missing wallet query parameter" });
+    }
+
+    const { data: entry } = await supabase
+      .from("event_whitelist")
+      .select("id")
+      .eq("event_id", id)
+      .eq("wallet_address", String(wallet).toLowerCase())
+      .single();
+
+    res.json({ whitelisted: !!entry });
+  } catch (err) {
+    console.error("GET /api/events/:id/whitelist/check error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  POST /api/events/:id/whitelist — Manage invite-only whitelist
+// ──────────────────────────────────────────────
+router.post("/:id/whitelist", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { wallet_address, creator_address } = req.body;
+
+    if (!wallet_address || !creator_address) {
+      return res.status(400).json({ error: "Missing wallet_address or creator_address" });
+    }
+
+    // Verify event exists and caller is creator
+    const { data: event, error: eventErr } = await supabase
+      .from("events")
+      .select("creator_address, access_type, status")
+      .eq("id", id)
+      .single();
+
+    if (eventErr || !event) return res.status(404).json({ error: "Event not found" });
+    if (event.creator_address.toLowerCase() !== creator_address.toLowerCase()) {
+      return res.status(403).json({ error: "Only the event creator can manage the whitelist" });
+    }
+    if (event.access_type !== "invite_only") {
+      return res.status(400).json({ error: "Whitelist management is only available for invite-only events" });
+    }
+    if (event.status !== "setup") {
+      return res.status(400).json({ error: "Whitelist can only be modified during setup phase" });
+    }
+
+    // Insert into whitelist (ignore duplicate via upsert-like check)
+    const normalizedAddress = wallet_address.trim().toLowerCase();
+    const { data: existingEntry } = await supabase
+      .from("event_whitelist")
+      .select("id")
+      .eq("event_id", id)
+      .eq("wallet_address", normalizedAddress)
+      .single();
+
+    if (existingEntry) {
+      return res.status(409).json({ error: "Address already in whitelist" });
+    }
+
+    const { data: entry, error: insertErr } = await supabase
+      .from("event_whitelist")
+      .insert({ event_id: id, wallet_address: normalizedAddress })
+      .select()
+      .single();
+
+    if (insertErr) throw insertErr;
+
+    res.status(201).json(entry);
+  } catch (err) {
+    console.error("POST /api/events/:id/whitelist error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -675,13 +832,6 @@ async function resolveConsensus(eventId) {
 
   // Check for 50/50 tie
   if (agreeCount === rejectCount) {
-    // Check if this is a second appeal (already been disputed before)
-    // If the event has been in disputed status before, force refund
-    const isSecondAppeal = event.winners_submitted_at !== null;
-
-    // Simple heuristic: if there were previously deleted votes, this is an appeal round
-    // For robustness, we just check — if the event was already in 'disputed' and came back to 'voting'
-    // we treat any further tie as a forced refund
     await supabase
       .from("events")
       .update({ status: "disputed" })
@@ -691,7 +841,7 @@ async function resolveConsensus(eventId) {
   }
 
   if (agreePercent >= event.consensus_threshold) {
-    // Consensus reached — distribute prizes on-chain
+    // Consensus reached — distribute prizes on-chain via Viem
     const { data: winners } = await supabase
       .from("participants")
       .select("wallet_address")
@@ -711,7 +861,7 @@ async function resolveConsensus(eventId) {
         .select("id")
         .eq("event_id", eventId);
 
-      const totalPool = ethers.parseEther(
+      const totalPool = parseEther(
         String(onChainEvent.ticket_price * allParticipants.length)
       );
       const sharePerWinner = totalPool / BigInt(winners.length);
@@ -726,12 +876,13 @@ async function resolveConsensus(eventId) {
       }
 
       try {
-        const tx = await vaultContract.distributePrize(
-          eventIdBytes32,
-          winnerAddresses,
-          shares
-        );
-        await tx.wait();
+        const txHash = await walletClient.writeContract({
+          address: VAULT_ADDRESS,
+          abi: VAULT_ABI,
+          functionName: "distributePrize",
+          args: [eventIdBytes32, winnerAddresses, shares],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: txHash });
       } catch (chainErr) {
         console.error("On-chain distributePrize failed:", chainErr);
       }
@@ -742,11 +893,16 @@ async function resolveConsensus(eventId) {
       .update({ status: "ended" })
       .eq("id", eventId);
   } else {
-    // Consensus NOT reached — emergency refund
+    // Consensus NOT reached — emergency refund via Viem
     const eventIdBytes32 = uuidToBytes32(eventId);
     try {
-      const tx = await vaultContract.emergencyRefund(eventIdBytes32);
-      await tx.wait();
+      const txHash = await walletClient.writeContract({
+        address: VAULT_ADDRESS,
+        abi: VAULT_ABI,
+        functionName: "emergencyRefund",
+        args: [eventIdBytes32],
+      });
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
     } catch (chainErr) {
       console.error("On-chain emergencyRefund failed:", chainErr);
     }

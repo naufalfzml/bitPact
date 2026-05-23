@@ -34,6 +34,7 @@ interface EventDetail {
   status: "setup" | "active" | "voting" | "ended" | "disputed";
   creator_address: string;
   created_at: string;
+  access_type: "public" | "password" | "invite_only";
   participants: Participant[];
   brackets: BracketMatch[];
   voting: {
@@ -66,6 +67,24 @@ export default function EventDetailPage() {
 
   // Dispute / Appeal revised winners input
   const [appealWinners, setAppealWinners] = useState("");
+
+  // Social Connect lookup state
+  const [socialInput, setSocialInput] = useState("");
+  const [socialLookupStatus, setSocialLookupStatus] = useState<"idle" | "loading" | "resolved" | "not_resolved">("idle");
+  const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
+
+  // Private Event — Password registration
+  const [roomPassword, setRoomPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  // Private Event — Whitelist check
+  const [whitelistChecked, setWhitelistChecked] = useState(false);
+  const [isWhitelisted, setIsWhitelisted] = useState(false);
+
+  // Whitelist management (creator, invite-only)
+  const [whitelistManualAddr, setWhitelistManualAddr] = useState("");
+  const [addingToWhitelist, setAddingToWhitelist] = useState(false);
+  const [addingViaLookup, setAddingViaLookup] = useState(false);
 
   const fetchEventDetail = async () => {
     try {
@@ -112,13 +131,36 @@ export default function EventDetailPage() {
   const isRegistered = address && event.participants.some(p => p.wallet_address.toLowerCase() === address.toLowerCase());
   const myParticipantObj = address ? event.participants.find(p => p.wallet_address.toLowerCase() === address.toLowerCase()) : null;
 
+  // Check whitelist status for invite-only events
+  React.useEffect(() => {
+    if (event && event.access_type === "invite_only" && address && !isCreator && !isRegistered && !whitelistChecked) {
+      (async () => {
+        try {
+          // We attempt a lightweight check by querying the event whitelist via the register endpoint behavior.
+          // A better approach would be a dedicated GET endpoint, but for now we check via the existing infrastructure.
+          const res = await fetch(`${API_BASE_URL}/events/${event.id}/whitelist/check?wallet=${address.toLowerCase()}`);
+          if (res.ok) {
+            const data = await res.json();
+            setIsWhitelisted(data.whitelisted === true);
+          }
+        } catch {
+          // If the check endpoint doesn't exist yet, we'll just let the registration attempt handle it
+          setIsWhitelisted(false);
+        } finally {
+          setWhitelistChecked(true);
+        }
+      })();
+    }
+  }, [event, address, isCreator, isRegistered, whitelistChecked]);
+
   // ── Registration Flow ──
-  const handleRegister = async () => {
+  const handleRegister = async (passwordOverride?: string) => {
     if (!isConnected || !address) {
       alert("Please connect your wallet!");
       return;
     }
     setRegistering(true);
+    setPasswordError(null);
     setStatusMessage("STEP 1: APPROVING CUSD TRANSACTIONS...");
     try {
       const ticketPriceWei = parseEther(event.ticket_price);
@@ -146,18 +188,26 @@ export default function EventDetailPage() {
 
       setStatusMessage("STEP 3: SECURING YOUR SEAT IN DATABASE...");
 
-      // 3. Update Database Backend
+      // 3. Update Database Backend (include password if applicable)
+      const registerBody: Record<string, string> = {
+        wallet_address: address,
+        tx_hash: registerTx,
+      };
+      if (event.access_type === "password" && passwordOverride) {
+        registerBody.password = passwordOverride;
+      }
+
       const res = await fetch(`${API_BASE_URL}/events/${event.id}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          wallet_address: address,
-          tx_hash: registerTx,
-        }),
+        body: JSON.stringify(registerBody),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
+        if (res.status === 403 && event.access_type === "password") {
+          setPasswordError(errorData.error || "Password turnamen tidak valid");
+        }
         throw new Error(errorData.error || "Gagal mendaftar di database");
       }
 
@@ -165,6 +215,7 @@ export default function EventDetailPage() {
       setTimeout(() => {
         setStatusMessage("");
         setRegistering(false);
+        setRoomPassword("");
         fetchEventDetail();
       }, 2000);
     } catch (err: any) {
@@ -172,6 +223,33 @@ export default function EventDetailPage() {
       alert(`Registration Failed: ${err.message || "Unknown error"}`);
       setStatusMessage("");
       setRegistering(false);
+    }
+  };
+
+  // ── Whitelist Management (Creator adds invitees) ──
+  const handleAddToWhitelist = async (walletAddr: string) => {
+    if (!walletAddr || !address || !event) return;
+    setAddingToWhitelist(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/events/${event.id}/whitelist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet_address: walletAddr,
+          creator_address: address,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to add to whitelist");
+      }
+      alert(`${walletAddr.slice(0, 10)}... added to whitelist!`);
+      setWhitelistManualAddr("");
+      fetchEventDetail();
+    } catch (err: any) {
+      alert(`Whitelist Error: ${err.message}`);
+    } finally {
+      setAddingToWhitelist(false);
     }
   };
 
@@ -268,14 +346,86 @@ export default function EventDetailPage() {
     }
   };
 
+  // ── Social Connect Lookup Flow ──
+  const handleSocialLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!socialInput.trim()) return;
+
+    setSocialLookupStatus("loading");
+    setResolvedAddress(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/social-connect/lookup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: socialInput.trim() }),
+      });
+      const data = await res.json();
+
+      if (data.status === "RESOLVED" && data.address) {
+        setSocialLookupStatus("resolved");
+        setResolvedAddress(data.address);
+      } else {
+        setSocialLookupStatus("not_resolved");
+      }
+    } catch (err: any) {
+      console.error("Social Connect lookup error:", err);
+      setSocialLookupStatus("not_resolved");
+    }
+  };
+
+  const handleAddResolvedPlayer = async () => {
+    if (!resolvedAddress || !event) return;
+    setAddingViaLookup(true);
+    try {
+      // Register the resolved wallet address directly into the database roster
+      const res = await fetch(`${API_BASE_URL}/events/${event.id}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet_address: resolvedAddress,
+          tx_hash: "social-connect-invite", // Placeholder — on-chain deposit handled separately by the invited player
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to add player");
+      }
+
+      alert(`Player ${resolvedAddress.slice(0, 10)}... added to roster!`);
+      setSocialInput("");
+      setSocialLookupStatus("idle");
+      setResolvedAddress(null);
+      fetchEventDetail();
+    } catch (err: any) {
+      alert(`Add Player Error: ${err.message}`);
+    } finally {
+      setAddingViaLookup(false);
+    }
+  };
+
   return (
     <div>
       {/* Event Header Banner */}
       <section className="bp-card bp-mb-lg">
         <div className="bp-flex bp-justify-between bp-items-center bp-mb-md">
-          <span className={`bp-badge bp-badge-${event.game_mode}`}>
-            {event.game_mode} {event.game_mode === "team" ? `(${event.team_size}v${event.team_size})` : ""}
-          </span>
+          <div className="bp-flex bp-gap-sm bp-items-center">
+            <span className={`bp-badge bp-badge-${event.game_mode}`}>
+              {event.game_mode} {event.game_mode === "team" ? `(${event.team_size}v${event.team_size})` : ""}
+            </span>
+            {/* Access Type Badge */}
+            {event.access_type === "password" && (
+              <span className="bp-badge" style={{ borderColor: "var(--bp-accent)", color: "var(--bp-accent)", background: "rgba(255,193,7,0.1)" }}>
+                ■ PRIVATE: PASSWORD ■
+              </span>
+            )}
+            {event.access_type === "invite_only" && (
+              <span className="bp-badge" style={{ borderColor: "var(--bp-cyan)", color: "var(--bp-cyan)", background: "rgba(0,255,255,0.1)" }}>
+                ■ PRIVATE: INVITE ONLY ■
+              </span>
+            )}
+          </div>
           <span className={`bp-badge bp-badge-${event.status}`}>{event.status}</span>
         </div>
         <h1 className="bp-text-xl bp-text-primary bp-mb-md">{event.title}</h1>
@@ -311,19 +461,66 @@ export default function EventDetailPage() {
 
             {event.status === "setup" && (
               <div>
-                {isRegistered ? (
+                {/* Creator Restriction: block creators from registering */}
+                {isCreator ? (
+                  <div className="bp-text-center" style={{ padding: "16px 8px", border: "2px solid var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
+                    <p className="bp-text-red bp-text-sm" style={{ letterSpacing: "1px" }}>■ KREATUR TIDAK BISA IKUT BERMAIN ■</p>
+                    <p className="bp-text-xs bp-text-muted bp-mt-sm">
+                      Sebagai penyelenggara/juri, Anda tidak dapat berpartisipasi di turnamen buatan sendiri.
+                    </p>
+                  </div>
+                ) : isRegistered ? (
                   <div className="bp-text-center">
                     <p className="bp-text-green bp-blink bp-text-sm">■ YOU ARE REGISTERED ■</p>
                     <p className="bp-text-xs bp-text-muted bp-mt-sm">Waiting for the creator to start the tournament matches.</p>
                   </div>
+                ) : event.access_type === "password" ? (
+                  /* Password-protected registration form */
+                  <div>
+                    <p className="bp-text-xs bp-text-muted bp-mb-md">
+                      This tournament requires a room code. Enter the password shared by the organizer to register.
+                    </p>
+                    {passwordError && (
+                      <div className="bp-text-center bp-text-red bp-text-xs bp-mb-sm" style={{ padding: "8px", border: "1px solid var(--bp-red)" }}>
+                        {passwordError}
+                      </div>
+                    )}
+                    <div className="bp-field">
+                      <input
+                        type="text"
+                        className="bp-input"
+                        placeholder="Enter room code..."
+                        value={roomPassword}
+                        onChange={(e) => { setRoomPassword(e.target.value); setPasswordError(null); }}
+                        disabled={registering}
+                        style={{ letterSpacing: "3px", textAlign: "center", textTransform: "uppercase" }}
+                      />
+                    </div>
+                    <button
+                      className="bp-btn bp-btn-primary bp-w-full"
+                      onClick={() => handleRegister(roomPassword)}
+                      disabled={registering || !roomPassword.trim()}
+                    >
+                      {registering ? statusMessage : "■ ENTER ROOM CODE ■"}
+                    </button>
+                  </div>
+                ) : event.access_type === "invite_only" && !isWhitelisted ? (
+                  /* Invite-only: user not on whitelist */
+                  <div className="bp-text-center" style={{ padding: "16px 8px", border: "2px solid var(--bp-cyan)", background: "rgba(0,255,255,0.05)" }}>
+                    <p className="bp-text-xs" style={{ color: "var(--bp-cyan)", letterSpacing: "1px" }}>■ KHUSUS UNDANGAN ■</p>
+                    <p className="bp-text-xs bp-text-muted bp-mt-sm">
+                      Turnamen ini hanya untuk peserta yang diundang. Hubungi penyelenggara untuk mendapatkan akses.
+                    </p>
+                  </div>
                 ) : (
+                  /* Public or whitelisted invite-only: normal registration */
                   <div>
                     <p className="bp-text-xs bp-text-muted bp-mb-md">
                       Join this tournament by locking your {event.ticket_price} cUSD entrance fee in our secure escrow.
                     </p>
                     <button
                       className="bp-btn bp-btn-primary bp-w-full"
-                      onClick={handleRegister}
+                      onClick={() => handleRegister()}
                       disabled={registering}
                     >
                       {registering ? statusMessage : "■ Register & Lock cUSD"}
@@ -438,6 +635,97 @@ export default function EventDetailPage() {
           {/* Participants list */}
           <div className="bp-card">
             <h3 className="bp-card-title">■ Registered Roster ■</h3>
+
+            {/* Whitelist Management — Creator Only, Invite-Only, Setup Phase */}
+            {isCreator && event.status === "setup" && event.access_type === "invite_only" && (
+              <div style={{ marginBottom: "16px", padding: "12px", border: "1px solid var(--bp-cyan)", background: "rgba(0,255,255,0.05)" }}>
+                <p className="bp-text-xs" style={{ color: "var(--bp-cyan)", marginBottom: "8px" }}>
+                  ■ WHITELIST MANAGEMENT ■
+                </p>
+
+                {/* Manual wallet address input */}
+                <div className="bp-flex bp-gap-sm bp-mb-sm" style={{ alignItems: "flex-end" }}>
+                  <input
+                    type="text"
+                    className="bp-input bp-text-xs"
+                    placeholder="0x... wallet address"
+                    value={whitelistManualAddr}
+                    onChange={(e) => setWhitelistManualAddr(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    className="bp-btn bp-btn-accent bp-text-xs"
+                    onClick={() => handleAddToWhitelist(whitelistManualAddr)}
+                    disabled={addingToWhitelist || !whitelistManualAddr.trim()}
+                    style={{ whiteSpace: "nowrap" }}
+                  >
+                    {addingToWhitelist ? "ADDING..." : "[ ADD ]"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Social Connect Invite — Creator Only, Setup Phase */}
+            {isCreator && event.status === "setup" && (
+              <div style={{ marginBottom: "16px", padding: "12px", border: "1px solid var(--bp-accent)", background: "rgba(0,0,0,0.3)" }}>
+                <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "8px" }}>
+                  [ SOCIAL CONNECT ] Invite players by email or phone number:
+                </p>
+                <form onSubmit={handleSocialLookup} className="bp-flex bp-gap-sm" style={{ alignItems: "flex-end" }}>
+                  <input
+                    type="text"
+                    className="bp-input bp-text-xs"
+                    placeholder="email or phone (e.g. +628...)"
+                    value={socialInput}
+                    onChange={(e) => {
+                      setSocialInput(e.target.value);
+                      setSocialLookupStatus("idle");
+                      setResolvedAddress(null);
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="submit"
+                    className="bp-btn bp-btn-accent bp-text-xs"
+                    disabled={socialLookupStatus === "loading" || !socialInput.trim()}
+                    style={{ whiteSpace: "nowrap" }}
+                  >
+                    {socialLookupStatus === "loading" ? "SEARCHING..." : "[ SEARCH ]"}
+                  </button>
+                </form>
+
+                {/* Lookup Result */}
+                {socialLookupStatus === "resolved" && resolvedAddress && (
+                  <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-green)", background: "rgba(0,255,0,0.05)" }}>
+                    <p className="bp-text-xs bp-text-green" style={{ marginBottom: "4px" }}>
+                      ■ RESOLVED: {resolvedAddress.slice(0, 14)}...{resolvedAddress.slice(-8)}
+                    </p>
+                    <button
+                      className="bp-btn bp-btn-green bp-text-xs bp-w-full"
+                      onClick={() => {
+                        if (event.access_type === "invite_only") {
+                          handleAddToWhitelist(resolvedAddress);
+                        } else {
+                          handleAddResolvedPlayer();
+                        }
+                      }}
+                      disabled={addingViaLookup || addingToWhitelist}
+                    >
+                      {(addingViaLookup || addingToWhitelist) ? "ADDING..." : event.access_type === "invite_only" ? "[ ADD TO WHITELIST ]" : "[ ADD TO ROSTER ]"}
+                    </button>
+                  </div>
+                )}
+
+                {socialLookupStatus === "not_resolved" && (
+                  <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
+                    <p className="bp-text-xs bp-text-red">
+                      ■ NOT FOUND — Identity not registered in Social Connect. Try a wallet address instead.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {event.participants.length === 0 ? (
               <p className="bp-text-xs bp-text-muted">No players signed up yet.</p>
             ) : (

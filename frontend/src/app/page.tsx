@@ -11,6 +11,7 @@ interface Event {
   team_size: number;
   ticket_price: string;
   status: "setup" | "active" | "voting" | "ended" | "disputed";
+  access_type?: "public" | "password" | "invite_only";
   participant_count: number;
   created_at: string;
 }
@@ -111,9 +112,21 @@ export default function HomePage() {
             {events.map((event) => (
               <div key={event.id} className="bp-card">
                 <div className="bp-flex bp-justify-between bp-items-center bp-mb-md">
-                  <span className={`bp-badge bp-badge-${event.game_mode}`}>
-                    {event.game_mode} {event.game_mode === "team" ? `(${event.team_size}v${event.team_size})` : ""}
-                  </span>
+                  <div className="bp-flex bp-gap-sm bp-items-center" style={{ flexWrap: "wrap" }}>
+                    <span className={`bp-badge bp-badge-${event.game_mode}`}>
+                      {event.game_mode} {event.game_mode === "team" ? `(${event.team_size}v${event.team_size})` : ""}
+                    </span>
+                    {event.access_type === "password" && (
+                      <span className="bp-badge" style={{ borderColor: "var(--bp-accent)", color: "var(--bp-accent)", background: "rgba(255,193,7,0.1)", fontSize: "0.4rem" }}>
+                        ■ PASSWORD ■
+                      </span>
+                    )}
+                    {event.access_type === "invite_only" && (
+                      <span className="bp-badge" style={{ borderColor: "var(--bp-cyan)", color: "var(--bp-cyan)", background: "rgba(0,255,255,0.1)", fontSize: "0.4rem" }}>
+                        ■ INVITE ■
+                      </span>
+                    )}
+                  </div>
                   <span className={`bp-badge bp-badge-${event.status}`}>{event.status}</span>
                 </div>
                 <h3 className="bp-card-title" style={{ fontSize: "1rem", minHeight: "2.4rem" }}>

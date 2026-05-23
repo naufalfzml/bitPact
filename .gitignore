@@ -4,3 +4,10 @@
 openspec/
 GEMINI.md
 PROJECT_OVERVIEW.md
+
+# Dependencies & Build Artifacts
+node_modules/
+backend/node_modules/
+contracts/out/
+contracts/cache/
+contracts/broadcast/

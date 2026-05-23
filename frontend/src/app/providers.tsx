@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { celo, celoAlfajores } from "wagmi/chains";
@@ -14,12 +14,33 @@ const config = getDefaultConfig({
   ssr: true,
 });
 
+// MiniPay detection context
+interface MiniPayContextType {
+  isMiniPay: boolean;
+}
+
+const MiniPayContext = createContext<MiniPayContextType>({ isMiniPay: false });
+
+export function useMiniPay() {
+  return useContext(MiniPayContext);
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
+  const [isMiniPay, setIsMiniPay] = useState(false);
   const [queryClient] = useState(() => new QueryClient());
 
   useEffect(() => {
     setMounted(true);
+
+    // Detect Opera MiniPay injected provider
+    if (typeof window !== "undefined") {
+      const ethereum = (window as any).ethereum;
+      if (ethereum?.isMiniPay) {
+        setIsMiniPay(true);
+        console.log("[bitPatch] MiniPay browser detected — mobile-first mode activated");
+      }
+    }
   }, []);
 
   if (!mounted) {
@@ -27,12 +48,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>
-          {children}
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <MiniPayContext.Provider value={{ isMiniPay }}>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitProvider>
+            {children}
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </MiniPayContext.Provider>
   );
 }

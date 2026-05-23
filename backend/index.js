@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const eventsRouter = require("./routes/events");
 const reputationRouter = require("./routes/reputation");
+const socialConnectRouter = require("./routes/socialConnect");
 const { startAutoAbstainCron } = require("./cron/autoAbstain");
 
 const app = express();
@@ -16,6 +17,7 @@ app.use(express.json());
 // Routes
 app.use("/api/events", eventsRouter);
 app.use("/api/reputation", reputationRouter);
+app.use("/api/social-connect", socialConnectRouter);
 
 // Health check
 app.get("/api/health", (_req, res) => {
