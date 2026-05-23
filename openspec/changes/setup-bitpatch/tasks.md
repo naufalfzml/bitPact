@@ -117,3 +117,20 @@
 - [x] 12.7 Test edge case: photo_required = true → winner harus upload foto → creator baru bisa submit
 - [x] 12.8 Test edge case: emergencyRefund ketika semua vote Tolak → cUSD kembali ke semua peserta
 - [x] 12.9 Verifikasi Minority Penalty: setelah high-consensus vote, cek wallet minoritas tercatat di reputation_tracking
+
+## 13. Deployment Testnet & Integrasi Staging
+
+- [ ] 13.1 Jalankan skrip migrasi database Supabase dengan menyalin script di `backend/db/schema.sql` dan mengeksekusinya di SQL Editor Supabase Cloud.
+- [ ] 13.2 Lakukan deployment riil smart contract `BitPatchVault.sol` ke Celo Sepolia Testnet menggunakan wallet deployer yang terdanai, lalu catat alamat kontrak yang dihasilkan.
+- [ ] 13.3 Buat berkas environment rahasia lokal (`backend/.env` dan `frontend/.env.local`) dan isi dengan kredensial asli (Supabase keys, RPC Celo, alamat kontrak terdeploy, admin wallet address & private key).
+
+## 14. Pengintegrasian & Koordinasi Berkas
+
+- [ ] 14.1 Ganti seluruh placeholders alamat kontrak pintar di berkas `README.md` utama dengan alamat asli hasil deployment Sepolia Testnet.
+
+## 15. Pengujian Staging End-to-End (Uji Coba Nyata)
+
+- [ ] 15.1 Jalankan Express API Server di localhost (`http://localhost:3001`) dan verifikasi koneksi backend ke database Supabase Cloud & blockchain Celo Sepolia berjalan tanpa kendala (connection handshakes).
+- [ ] 15.2 Hubungkan emulator mobile browser Opera MiniPay lokal ke Next.js dev server, verifikasi dompet MiniPay terdeteksi secara otomatis, dan lakukan approval serta deposit cUSD Sepolia Testnet asli.
+- [ ] 15.3 Jalankan satu siklus turnamen PvP penuh secara langsung di testnet: Create Event → Signup Players (dengan transfer cUSD testnet riil) → Creator Start (bracket terbuat) → Advance Bracket → End Tournament → Consensus Voting (24 jam timeout / all vote) → Verifikasi Payout cUSD testnet terdistribusi otomatis di blockchain.
+- [ ] 15.4 Lakukan pengujian skenario Minority Penalty secara riil dan periksa apakah skor reputasi di tabel `reputation_tracking` berkurang secara tepat waktu.
