@@ -9,15 +9,16 @@ bitPatch adalah platform turnamen terdesentralisasi (greenfield) dengan estetika
 Untuk mempermudah koordinasi, berikut adalah alamat token dan smart contract resmi yang terkonfigurasi di ekosistem bitPatch:
 
 ### 1. Token cUSD (Stablecoin Celo)
-* **Celo Sepolia / Alfajores Testnet (Official standard)**: `0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1`
-* **Alternative Sepolia Testnet Address**: `0x2F27dB654e38b456C9C7B650F89Ec487Cc4C8354`
+* **Celo Mainnet (Official Address)**: `0x765DE816845861e75A25fCA122bb6898B8B1282a`
+* **Celo Sepolia / Alfajores Testnet Address**: `0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1`
 
 ### 2. bitPatch Vault Smart Contract (`BitPatchVault.sol`)
 * **Fungsi**: Escrow buta (blind escrow) untuk menampung deposit tiket masuk cUSD peserta, mendistribusikan hadiah ke multi-pemenang, atau memicu pengembalian dana darurat (emergency refund) 100% jika suara konsensus menolak keputusan juri.
-* **Alamat Kontrak**: Dikonfigurasi dalam environment variable backend (`VAULT_CONTRACT_ADDRESS`) dan frontend (`NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS`) setelah deployment dilakukan menggunakan script Foundry.
+* **Alamat Kontrak Terdeploy (Celo Mainnet)**: `0xC2375c25f402e83ce2b6F148146D6A8b47c0e62F`
 
 ### 3. Backend Admin Wallet
-* **Alamat Dompet**: Dikonfigurasi menggunakan private key rahasia backend (`ADMIN_WALLET_PRIVATE_KEY`). Wallet ini membiayai seluruh transaksi gas on-chain Celo untuk fungsi-fungsi kritis juri/admin sehingga pengguna mendapatkan pengalaman bebas biaya transaksi gas (gasless creation & payouts).
+* **Alamat Dompet (Public Address)**: `0x003DC53295c2849Aec366F8D07fE5519C5605C19`
+* **Fungsi**: Mensponsori biaya transaksi gas on-chain Celo untuk fungsi-fungsi kritis juri/admin sehingga pengguna mendapatkan pengalaman bebas biaya transaksi gas (gasless creation & payouts).
 
 ---
 
