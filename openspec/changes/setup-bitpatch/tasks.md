@@ -120,13 +120,13 @@
 
 ## 13. Deployment Testnet & Integrasi Staging
 
-- [ ] 13.1 Jalankan skrip migrasi database Supabase dengan menyalin script di `backend/db/schema.sql` dan mengeksekusinya di SQL Editor Supabase Cloud.
-- [ ] 13.2 Lakukan deployment riil smart contract `BitPatchVault.sol` ke Celo Sepolia Testnet menggunakan wallet deployer yang terdanai, lalu catat alamat kontrak yang dihasilkan.
-- [ ] 13.3 Buat berkas environment rahasia lokal (`backend/.env` dan `frontend/.env.local`) dan isi dengan kredensial asli (Supabase keys, RPC Celo, alamat kontrak terdeploy, admin wallet address & private key).
+- [x] 13.1 Jalankan skrip migrasi database Supabase dengan menyalin script di `backend/db/schema.sql` dan mengeksekusinya di SQL Editor Supabase Cloud.
+- [x] 13.2 Lakukan deployment riil smart contract `BitPatchVault.sol` ke Celo Sepolia Testnet menggunakan wallet deployer yang terdanai, lalu catat alamat kontrak yang dihasilkan.
+- [x] 13.3 Buat berkas environment rahasia lokal (`backend/.env` dan `frontend/.env.local`) dan isi dengan kredensial asli (Supabase keys, RPC Celo, alamat kontrak terdeploy, admin wallet address & private key).
 
 ## 14. Pengintegrasian & Koordinasi Berkas
 
-- [ ] 14.1 Ganti seluruh placeholders alamat kontrak pintar di berkas `README.md` utama dengan alamat asli hasil deployment Sepolia Testnet.
+- [x] 14.1 Ganti seluruh placeholders alamat kontrak pintar di berkas `README.md` utama dengan alamat asli hasil deployment Sepolia Testnet.
 
 ## 15. Pengujian Staging End-to-End (Uji Coba Nyata)
 
