@@ -1,5 +1,5 @@
 export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`;
-export const CUSD_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_CUSD_TOKEN_ADDRESS || "0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b") as `0x${string}`;
+export const CUSD_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_CUSD_TOKEN_ADDRESS || "0xEF4d55D6dE8e8d73232827Cd1e9b2F2dBb45bC80") as `0x${string}`;
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export const VAULT_ABI = [
