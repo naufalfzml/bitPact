@@ -1,24 +1,15 @@
 ## MODIFIED Requirements
 
-### Requirement: Kontrol Kreator Auto-Shuffle vs Manual Fill
-Sistem HARUS menyediakan opsi bagi Kreator Turnamen di halaman manajemen untuk mengisi bagan draf pertandingan secara acak otomatis (**AUTO SHUFFLE**) atau membiarkan bagan draf kosong agar kreator dapat menyusun draf matchup secara manual (**MANUAL INPUT**) menggunakan dropdown interaktif retro.
+### Requirement: Kontrol Kreator Auto-Shuffle vs Manual Fill pada Draf Bagan
+Sistem HARUS menyediakan opsi bagi Kreator Turnamen di halaman manajemen setelah pendaftaran ditutup (`roster_locked = true`) untuk mengisi bagan draf pertandingan secara acak otomatis (**AUTO SHUFFLE**) atau menyusun draf matchup secara manual (**MANUAL INPUT**) menggunakan dropdown interaktif retro dari daftar pemain terdaftar.
 
-#### Scenario: Kreator memilih Auto Shuffle
-- **GIVEN** pendaftaran turnamen telah ditutup (`roster_locked = true`) dan kreator berada di halaman admin turnamen
-- **WHEN** kreator menekan tombol **■ AUTO SHUFFLE BRACKETS ■**
-- **THEN** sistem memasangkan seluruh peserta secara acak ke dalam draf bagan pertandingan Ronde 1 secara lokal atau sementara di database
+#### Scenario: Kreator memilih Auto Shuffle pada draf bagan
+- **GIVEN** turnamen dalam status `setup` dan `roster_locked = true` serta draf bagan kosong telah di-generate
+- **WHEN** Kreator menekan tombol **■ AUTO SHUFFLE ■**
+- **THEN** sistem secara acak memasangkan seluruh peserta terdaftar ke dalam slot draf bagan Ronde 1 di database secara sementara
+- **AND** memperbarui UI draf bagan agar menampilkan nama-nama peserta pada masing-masing slot dropdown secara instan
 
-#### Scenario: Kreator memilih Manual Input dan Menghapus Peserta
-- **GIVEN** draf bagan turnamen kosong dan kreator berada di halaman admin turnamen
-- **WHEN** kreator menekan tombol **■ DELETE PLAYER ■** di samping nama peserta tertentu pada daftar roster
-- **THEN** peserta tersebut dihapus dari database peserta turnamen dan opsi dropdown pemilihan draf bracket terupdate secara real-time
-
----
-
-### Requirement: Tombol Close Event / Lock Roster
-Sistem HARUS menyediakan tombol **■ CLOSE SIGNUPS ■** bagi kreator turnamen untuk menutup pendaftaran peserta secara manual. Logika ini akan menetapkan `roster_locked = true` pada turnamen tanpa langsung mengubah status turnamen menjadi `active`, melainkan membuka fase draf penyusunan bagan terlebih dahulu.
-
-#### Scenario: Lock Roster berhasil dilakukan oleh kreator
-- **GIVEN** turnamen dalam status `setup` dan setidaknya ada 2 peserta terdaftar
-- **WHEN** kreator mengklik tombol **■ CLOSE SIGNUPS ■** di panel admin turnamen
-- **THEN** sistem mengubah kolom turnamen `roster_locked = true`, menutup pendaftaran baru bagi peserta, dan membuka panel draf penyusunan bagan pertandingan
+#### Scenario: Penghapusan Peserta Terdaftar Memperbarui Pilihan Dropdown Draf secara Real-Time
+- **GIVEN** turnamen dalam status `setup` dan `roster_locked = false`
+- **WHEN** Kreator menekan tombol **■ DEL ■** di samping nama peserta tertentu pada tabel roster
+- **THEN** peserta tersebut dihapus dari database peserta turnamen dan opsi dropdown pemilihan draf bracket terupdate secara otomatis saat pendaftaran ditutup nanti

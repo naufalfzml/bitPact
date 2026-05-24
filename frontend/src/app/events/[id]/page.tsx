@@ -19,8 +19,8 @@ interface BracketMatch {
   id: string;
   round: number;
   match_index: number;
-  player_a: string;
-  player_b: string;
+  player_a: string | null;
+  player_b: string | null;
   winner: string | null;
 }
 
@@ -36,6 +36,8 @@ interface EventDetail {
   creator_address: string;
   created_at: string;
   access_type: "password" | "invite_only";
+  roster_locked?: boolean;
+  max_participants?: number;
   participants: Participant[];
   brackets: BracketMatch[];
   voting: {
@@ -69,6 +71,20 @@ export default function EventDetailPage() {
 
   // Dispute / Appeal revised winners input
   const [appealWinners, setAppealWinners] = useState("");
+
+  // Bracket Drafting states
+  const [selectedGameMode, setSelectedGameMode] = useState<"1v1" | "team">("1v1");
+  const [isGeneratingBracket, setIsGeneratingBracket] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isStartingEvent, setIsStartingEvent] = useState(false);
+  const [localDraftMatches, setLocalDraftMatches] = useState<BracketMatch[]>([]);
+
+  // Sync draft matches from event detail
+  useEffect(() => {
+    if (event && event.status === "setup" && event.roster_locked && event.brackets) {
+      setLocalDraftMatches(event.brackets);
+    }
+  }, [event]);
 
   // Social Connect lookup state
   const [socialInput, setSocialInput] = useState("");
@@ -266,17 +282,181 @@ export default function EventDetailPage() {
   };
 
   // ── Creator Control Flow ──
-  const handleStartTournament = async () => {
+  const handleGenerateBracketDraft = async () => {
+    if (!event) return;
+    setIsGeneratingBracket(true);
     try {
+      const res = await fetch(`${API_BASE_URL}/events/${event.id}/select-game-mode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creator_address: address,
+          game_mode: selectedGameMode,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal men-generate draf");
+      alert("Format terpilih! Draf bagan kosong berhasil dibuat.");
+      fetchEventDetail();
+    } catch (err: any) {
+      alert(`Generate Error: ${err.message}`);
+    } finally {
+      setIsGeneratingBracket(false);
+    }
+  };
+
+  const handleAutoShuffleDraft = async () => {
+    if (!event) return;
+    setIsSavingDraft(true);
+    try {
+      // Shuffle players
+      const shuffledPlayers = [...event.participants].sort(() => Math.random() - 0.5);
+      const updatedMatches = [...localDraftMatches].map((match, i) => {
+        const pAIndex = i * 2;
+        const pBIndex = i * 2 + 1;
+        
+        const playerA = shuffledPlayers[pAIndex]?.wallet_address || null;
+        const playerB = shuffledPlayers[pBIndex]?.wallet_address || (playerA ? "BYE" : null);
+
+        let winnerVal = null;
+        if (playerB === "BYE" && playerA) {
+          winnerVal = playerA;
+        } else if (playerA === "BYE" && playerB) {
+          winnerVal = playerB;
+        }
+
+        return {
+          ...match,
+          player_a: playerA,
+          player_b: playerB,
+          winner: winnerVal,
+        };
+      });
+
+      // Update local state
+      setLocalDraftMatches(updatedMatches);
+
+      // Save to database draft
+      const res = await fetch(`${API_BASE_URL}/events/${event.id}/draft-bracket`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creator_address: address,
+          matches: updatedMatches,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Gagal menyimpan draf bagan");
+      alert("Draf bagan diacak otomatis dan disimpan!");
+      fetchEventDetail();
+    } catch (err: any) {
+      alert(`Shuffle Error: ${err.message}`);
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
+  const handleSaveDraftBracket = async () => {
+    if (!event) return;
+    setIsSavingDraft(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/events/${event.id}/draft-bracket`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creator_address: address,
+          matches: localDraftMatches,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal menyimpan draf bagan");
+      alert("Draf bagan pertandingan disimpan!");
+      fetchEventDetail();
+    } catch (err: any) {
+      alert(`Save Error: ${err.message}`);
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
+  const handleStartTournamentProgresive = async () => {
+    if (!event) return;
+    setIsStartingEvent(true);
+    try {
+      // First save draft for 1v1 mode
+      if (event.game_mode === "1v1") {
+        const saveRes = await fetch(`${API_BASE_URL}/events/${event.id}/draft-bracket`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            creator_address: address,
+            matches: localDraftMatches,
+          }),
+        });
+        if (!saveRes.ok) {
+          const data = await saveRes.json();
+          throw new Error(data.error || "Gagal mengunci draf sebelum memulai");
+        }
+      }
+
+      // Now start event
       const res = await fetch(`${API_BASE_URL}/events/${event.id}/start`, {
         method: "POST",
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal memulai turnamen");
+
+      alert("■ TURNAMEN RESMI DIMULAI ■");
       fetchEventDetail();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      alert(`Start Error: ${err.message}`);
+    } finally {
+      setIsStartingEvent(false);
     }
+  };
+
+  const handleUpdateDraftSlot = (matchIndex: number, slot: "player_a" | "player_b", value: string) => {
+    setLocalDraftMatches((prev) =>
+      prev.map((match) => {
+        if (match.match_index === matchIndex) {
+          const updatedMatch = { ...match, [slot]: value || null };
+          // If player_b is set to BYE, winner is automatically player_a, and vice versa
+          if (updatedMatch.player_b === "BYE" && updatedMatch.player_a) {
+            updatedMatch.winner = updatedMatch.player_a;
+          } else if (updatedMatch.player_a === "BYE" && updatedMatch.player_b) {
+            updatedMatch.winner = updatedMatch.player_b;
+          } else {
+            updatedMatch.winner = null;
+          }
+          return updatedMatch;
+        }
+        return match;
+      })
+    );
+  };
+
+  const getAvailablePlayersForSlot = (matchIndex: number, slot: "player_a" | "player_b") => {
+    if (!event) return [];
+    
+    // Find all players already assigned in ANY other match slot
+    const assignedPlayers = new Set<string>();
+    localDraftMatches.forEach((m) => {
+      // Exclude the current match slot itself so its player is available in this dropdown
+      if (m.match_index === matchIndex) {
+        if (slot === "player_a" && m.player_b) assignedPlayers.add(m.player_b.toLowerCase());
+        if (slot === "player_b" && m.player_a) assignedPlayers.add(m.player_a.toLowerCase());
+      } else {
+        if (m.player_a) assignedPlayers.add(m.player_a.toLowerCase());
+        if (m.player_b) assignedPlayers.add(m.player_b.toLowerCase());
+      }
+    });
+
+    // Players who are not in the assigned set
+    const available = event.participants.filter(
+      (p) => !assignedPlayers.has(p.wallet_address.toLowerCase())
+    );
+    
+    return available;
   };
 
   const handleAdvanceBracket = async (matchId: string, winnerAddress: string) => {
@@ -481,10 +661,24 @@ export default function EventDetailPage() {
                       Sebagai penyelenggara/juri, Anda tidak dapat berpartisipasi di turnamen buatan sendiri.
                     </p>
                   </div>
+                ) : event.roster_locked ? (
+                  <div className="bp-text-center" style={{ padding: "16px 8px", border: "2px dashed var(--bp-accent)", background: "rgba(255,193,7,0.05)" }}>
+                    <p className="bp-text-accent bp-text-sm" style={{ letterSpacing: "1px" }}>■ REGISTRASI DITUTUP ■</p>
+                    <p className="bp-text-xs bp-text-muted bp-mt-sm">
+                      Pendaftaran telah ditutup oleh penyelenggara. Turnamen sedang dalam fase penyusunan draf pertandingan.
+                    </p>
+                  </div>
                 ) : isRegistered ? (
                   <div className="bp-text-center">
                     <p className="bp-text-green bp-blink bp-text-sm">■ YOU ARE REGISTERED ■</p>
                     <p className="bp-text-xs bp-text-muted bp-mt-sm">Waiting for the creator to start the tournament matches.</p>
+                  </div>
+                ) : event.max_participants && event.participants.length >= event.max_participants ? (
+                  <div className="bp-text-center" style={{ padding: "16px 8px", border: "2px dashed var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
+                    <p className="bp-text-red bp-text-sm" style={{ letterSpacing: "1px" }}>■ SLOT PENUH ■</p>
+                    <p className="bp-text-xs bp-text-muted bp-mt-sm">
+                      Kapasitas maksimum turnamen ({event.max_participants} pendaftar) telah terpenuhi.
+                    </p>
                   </div>
                 ) : event.access_type === "password" ? (
                   /* Password-protected registration form */
@@ -846,39 +1040,175 @@ export default function EventDetailPage() {
             <div className="bp-card" style={{ borderColor: "var(--bp-primary)" }}>
               <h3 className="bp-card-title">🛡️ Creator Control Console 🛡️</h3>
 
-              {event.status === "setup" && (
+              {event.status === "setup" && !event.roster_locked && (
                 <div>
                   <p className="bp-text-xs bp-text-muted bp-mb-md">
-                    Lock the roster to close signups, then start the tournament to generate dynamic matchups.
+                    Registrasi pemain sedang terbuka ({event.participants.length}/{event.max_participants ? event.max_participants : "∞"} pemain). Tutup pendaftaran untuk mengunci roster peserta dan membuka fase draf bagan.
                   </p>
-                  <div className="bp-flex bp-flex-col bp-gap-sm">
-                    <button
-                      className="bp-btn bp-btn-accent bp-w-full"
-                      onClick={async () => {
-                        try {
-                          const res = await fetch(`${API_BASE_URL}/events/${event.id}/lock-roster`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ creator_address: address }),
-                          });
-                          const data = await res.json();
-                          if (!res.ok) throw new Error(data.error || "Gagal mengunci roster");
-                          alert(`Roster dikunci! ${data.participant_count} peserta terdaftar.`);
-                          fetchEventDetail();
-                        } catch (err: any) {
-                          alert(`Error: ${err.message}`);
-                        }
-                      }}
-                    >
-                      ■ LOCK ROSTER ■
-                    </button>
-                    <button
-                      className="bp-btn bp-btn-primary bp-w-full"
-                      onClick={handleStartTournament}
-                    >
-                      ■ Start Tournament & Shuffler
-                    </button>
-                  </div>
+                  <button
+                    className="bp-btn bp-btn-accent bp-w-full"
+                    disabled={event.participants.length < 2}
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`${API_BASE_URL}/events/${event.id}/lock-roster`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ creator_address: address }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || "Gagal mengunci roster");
+                        alert(`Pendaftaran ditutup! Roster pendaftar dikunci secara permanen.`);
+                        fetchEventDetail();
+                      } catch (err: any) {
+                        alert(`Error: ${err.message}`);
+                      }
+                    }}
+                  >
+                    ■ CLOSE SIGNUPS ■
+                  </button>
+                  {event.participants.length < 2 && (
+                    <p className="bp-text-red" style={{ fontSize: "0.4rem", marginTop: "4px", textAlign: "center" }}>
+                      * Butuh minimal 2 peserta untuk menutup pendaftaran.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {event.status === "setup" && event.roster_locked && (
+                <div>
+                  {event.brackets.length === 0 ? (
+                    /* Select Game Mode dynamically */
+                    <div>
+                      <p className="bp-text-xs bp-text-muted bp-mb-md">
+                        Roster terkunci ({event.participants.length} pemain). Silakan pilih mode pertandingan untuk turnamen ini:
+                      </p>
+                      <div className="bp-field">
+                        <label className="bp-label">MATCHPLAY FORMAT</label>
+                        <select
+                          className="bp-select"
+                          style={{ appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }}
+                          value={selectedGameMode}
+                          onChange={(e) => setSelectedGameMode(e.target.value as any)}
+                          disabled={isGeneratingBracket}
+                        >
+                          <option value="1v1">■ 1v1 PvP Tournament Bracket</option>
+                          <option value="team">■ Team vs Team Showdown (2v2/Custom)</option>
+                        </select>
+                      </div>
+                      <button
+                        className="bp-btn bp-btn-primary bp-w-full bp-mt-md"
+                        disabled={isGeneratingBracket}
+                        onClick={handleGenerateBracketDraft}
+                      >
+                        {isGeneratingBracket ? "GENERATING..." : "■ GENERATE BRACKET DRAFT ■"}
+                      </button>
+                    </div>
+                  ) : (
+                    /* Draft Bracket Panel */
+                    <div>
+                      <div className="bp-flex bp-justify-between bp-items-center bp-mb-md">
+                        <span className="bp-text-xs bp-text-primary">DRAF MATCHUP RONDE 1</span>
+                        <span className="bp-badge bp-badge-setup" style={{ fontSize: "0.4rem" }}>DRAFTING</span>
+                      </div>
+
+                      {event.game_mode === "1v1" ? (
+                        <div style={{ maxHeight: "250px", overflowY: "auto", border: "1px solid #333", padding: "8px", background: "#0b0b0f", marginBottom: "12px" }}>
+                          {localDraftMatches.map((match, idx) => (
+                            <div key={match.id || idx} style={{ borderBottom: "1px solid #222", paddingBottom: "8px", marginBottom: "8px" }}>
+                              <p className="bp-text-muted" style={{ fontSize: "0.45rem", marginBottom: "4px" }}>
+                                MATCH {match.match_index + 1}
+                              </p>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                {/* Slot Player A */}
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                  <span className="bp-text-xs bp-text-muted" style={{ width: "60px", fontSize: "0.45rem" }}>SLOT A:</span>
+                                  <select
+                                    className="bp-select bp-text-xs"
+                                    style={{ flex: 1, padding: "4px", background: "#15151f", appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }}
+                                    value={match.player_a || ""}
+                                    onChange={(e) => handleUpdateDraftSlot(match.match_index, "player_a", e.target.value)}
+                                  >
+                                    <option value="">[ CHOOSE PLAYER ]</option>
+                                    <option value="BYE">[ BYE ]</option>
+                                    {getAvailablePlayersForSlot(match.match_index, "player_a").map((p) => (
+                                      <option key={p.id} value={p.wallet_address}>
+                                        {generateGamerTag(p.wallet_address)} ({p.wallet_address.slice(0, 6)})
+                                      </option>
+                                    ))}
+                                    {match.player_a && !getAvailablePlayersForSlot(match.match_index, "player_a").some(p => p.wallet_address === match.player_a) && match.player_a !== "BYE" && (
+                                      <option value={match.player_a}>
+                                        {generateGamerTag(match.player_a)} ({match.player_a.slice(0, 6)})
+                                      </option>
+                                    )}
+                                  </select>
+                                </div>
+                                {/* Slot Player B */}
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                  <span className="bp-text-xs bp-text-muted" style={{ width: "60px", fontSize: "0.45rem" }}>SLOT B:</span>
+                                  <select
+                                    className="bp-select bp-text-xs"
+                                    style={{ flex: 1, padding: "4px", background: "#15151f", appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }}
+                                    value={match.player_b || ""}
+                                    onChange={(e) => handleUpdateDraftSlot(match.match_index, "player_b", e.target.value)}
+                                  >
+                                    <option value="">[ CHOOSE PLAYER ]</option>
+                                    <option value="BYE">[ BYE ]</option>
+                                    {getAvailablePlayersForSlot(match.match_index, "player_b").map((p) => (
+                                      <option key={p.id} value={p.wallet_address}>
+                                        {generateGamerTag(p.wallet_address)} ({p.wallet_address.slice(0, 6)})
+                                      </option>
+                                    ))}
+                                    {match.player_b && !getAvailablePlayersForSlot(match.match_index, "player_b").some(p => p.wallet_address === match.player_b) && match.player_b !== "BYE" && (
+                                      <option value={match.player_b}>
+                                        {generateGamerTag(match.player_b)} ({match.player_b.slice(0, 6)})
+                                      </option>
+                                    )}
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ padding: "12px", border: "1px solid var(--bp-cyan)", background: "rgba(0,255,255,0.05)", marginBottom: "12px", textAlign: "center" }}>
+                          <p className="bp-text-xs" style={{ color: "var(--bp-cyan)" }}>■ MODE TIM 2V2 / CUSTOM ■</p>
+                          <p className="bp-text-muted bp-mt-sm" style={{ fontSize: "0.4rem" }}>
+                            Peserta terdaftar ({event.participants.length} pemain) akan secara acak dibagi menjadi Team Merah dan Team Biru saat pertandingan resmi dimulai.
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="bp-flex bp-flex-col bp-gap-sm">
+                        {event.game_mode === "1v1" && (
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              className="bp-btn bp-btn-accent"
+                              style={{ flex: 1 }}
+                              disabled={isSavingDraft || isStartingEvent}
+                              onClick={handleAutoShuffleDraft}
+                            >
+                              ■ AUTO SHUFFLE ■
+                            </button>
+                            <button
+                              className="bp-btn"
+                              style={{ flex: 1, borderColor: "var(--bp-primary)", background: "transparent" }}
+                              disabled={isSavingDraft || isStartingEvent}
+                              onClick={handleSaveDraftBracket}
+                            >
+                              ■ SAVE DRAFT ■
+                            </button>
+                          </div>
+                        )}
+                        <button
+                          className="bp-btn bp-btn-green bp-w-full"
+                          disabled={isSavingDraft || isStartingEvent}
+                          onClick={handleStartTournamentProgresive}
+                        >
+                          {isStartingEvent ? "LAUNCHING..." : "■ START EVENT ■"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -964,6 +1294,59 @@ export default function EventDetailPage() {
                 </div>
               )}
 
+              {event.status === "voting" && (
+                <div>
+                  <p className="bp-text-xs bp-text-muted bp-mb-md">
+                    Turnamen dalam fase Voting. Payout otomatis terjadi setelah masa voting selesai. Jika Anda ingin menyelesaikannya lebih cepat secara manual, Anda dapat memicu tombol distribusi hadiah di bawah ini setelah kuorum suara pemilih terpenuhi (&gt;51%).
+                  </p>
+                  
+                  {/* Quorum Progress bar */}
+                  <div style={{ border: "1px solid var(--bp-primary)", padding: "10px", background: "rgba(255, 193, 7, 0.05)", marginBottom: "12px" }}>
+                    <div className="bp-flex bp-justify-between bp-text-xs bp-mb-xs">
+                      <span>VOTING QUORUM PROGRESS:</span>
+                      <span style={{ color: "var(--bp-green)" }}>
+                        {event.voting.percentage || "0"}%
+                      </span>
+                    </div>
+                    <div style={{ height: "10px", width: "100%", background: "#111", border: "1px solid #333", overflow: "hidden" }}>
+                      <div 
+                        style={{ 
+                          height: "100%", 
+                          width: `${Math.min(100, Number(event.voting.percentage || 0))}%`, 
+                          background: "var(--bp-green)" 
+                        }} 
+                      />
+                    </div>
+                    <p className="bp-text-muted" style={{ fontSize: "0.35rem", marginTop: "4px" }}>
+                      Total Votes: {event.voting.total} / {event.participants.length} Players. Minimum required to unlock button: 51%.
+                    </p>
+                  </div>
+
+                  <button
+                    className="bp-btn bp-btn-green bp-w-full"
+                    disabled={Number(event.voting.percentage || 0) < 51}
+                    onClick={async () => {
+                      if (!confirm("Picu distribusi hadiah secara manual berdasarkan voting konsensus saat ini?")) return;
+                      try {
+                        const res = await fetch(`${API_BASE_URL}/events/${event.id}/distribute`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ creator_address: address }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || "Gagal mendistribusikan hadiah");
+                        alert("■ DANA HADIAH BERHASIL DIDISTRIBUSIKAN! ■");
+                        fetchEventDetail();
+                      } catch (err: any) {
+                        alert(`Distribution Error: ${err.message}`);
+                      }
+                    }}
+                  >
+                    ■ DISTRIBUTE PRIZE ■
+                  </button>
+                </div>
+              )}
+
               {event.status === "disputed" && (
                 <div>
                   <p className="bp-text-xs bp-text-muted bp-mb-md">
@@ -985,7 +1368,7 @@ export default function EventDetailPage() {
                 </div>
               )}
 
-              {!["setup", "active", "disputed"].includes(event.status) && (
+              {!["setup", "active", "voting", "disputed"].includes(event.status) && (
                 <p className="bp-text-xs bp-text-muted">No admin actions required in state {event.status}.</p>
               )}
             </div>

@@ -1,32 +1,39 @@
 ## Context
 
-Untuk memperluas fungsionalitas pengorganisasian turnamen, antarmuka Kreator memerlukan proses berurutan 3-fase: `Close Signups` (Mengunci roster) $\rightarrow$ `Draft Bracket` (Mengacak/Menyusun secara otomatis atau manual) $\rightarrow$ `Start Event` (Turnamen Aktif resmi dimulai). 
-Saat pendaftaran ditutup, status turnamen tetap `'setup'`, namun kolom `roster_locked` diset menjadi `true`. Ini menutup formulir pendaftaran pemain baru dan membuka konsol interaktif penyusunan bagan draf.
+Untuk meningkatkan nilai utilitas dan fleksibilitas bitPatch, alur manajemen turnamen kini diatur secara berurutan:
+1. **Open Signups**: Pendaftaran terbuka bebas dengan pembatasan kuota `max_participants` (tanpa dipaksa memilih game mode di awal).
+2. **Close Signups**: Kreator menutup registrasi, menyetel `roster_locked = true`.
+3. **Select Mode & Draft Bracket**: Setelah roster terkunci, Kreator memilih format game mode asli (PvP 1v1 / Team Mode) sesuai jumlah peserta aktual, lalu merancang bagan (Auto-Shuffle atau manual dropdowns).
+4. **Start Event**: Kreator memfinalisasi bagan pertandingan dan mengubah status turnamen menjadi `'active'`.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Pembuat turnamen dapat menutup pendaftaran lebih awal tanpa langsung mengacak bracket secara *live*.
-- Pembuat turnamen dapat mengacak draf bracket secara otomatis (*auto-shuffle*) berulang-ulang tanpa memengaruhi jalannya turnamen sesungguhnya.
-- Pembuat turnamen dapat menyusun bracket secara manual (*manual assignment*) melalui dropdown selector interaktif dari daftar sisa pemain yang belum terisi.
-- Turnamen resmi dimulai hanya ketika kreator melakukan finalisasi dengan mengklik "■ START EVENT ■".
+- Pembuat turnamen dapat membatasi kuota peserta (`max_participants`) saat inisialisasi turnamen secara dinamis.
+- Pembuat turnamen dapat menutup pendaftaran secara manual kapan saja, yang menyetel `roster_locked = true` di database.
+- Pembuat turnamen dapat memilih game mode pertandingan yang paling relevan pasca-registrasi ditutup berdasarkan turnout aktual.
+- Pembuat turnamen dapat mengocok ulang (*auto-shuffle*) draf atau menetapkan pemain ke slot pertandingan secara manual via dropdown select retro tanpa panah.
+- Turnamen resmi dimulai hanya setelah draf bagan final di-submit via "■ START EVENT ■".
 
 **Non-Goals:**
-- Menambahkan drag-and-drop visual HTML5 yang rumit (menggunakan dropdown select retro yang piksel-akurat agar selaras dengan estetika retro 8-bit).
-- Mengubah struktur database Supabase di luar kolom penunjang `roster_locked`.
+- Menghapus kolom `game_mode` yang ada di database (kita tetap menggunakannya, diisi dengan default placeholder `'1v1'` saat inisialisasi, lalu diperbarui dengan pilihan akhir Kreator setelah registrasi ditutup).
+- Menggunakan drag-and-drop HTML5 yang kompleks (kami mempertahankan dropdown select retro pixel-art 8-bit yang bersih dan responsif di layar ponsel MiniPay).
 
 ## Decisions
 
-### 1. Kolom database `roster_locked` pada `events`
-* **Pilihan:** Menambahkan kolom `roster_locked BOOLEAN DEFAULT false` ke dalam tabel `events` di Supabase.
-* **Alternatif:** Menambahkan nilai `'draft'` baru ke dalam kolom `status` CHECK constraint.
-* **Rasional:** Mengubah check constraint database di Supabase membutuhkan query DDL migrasi besar yang berisiko merusak kompatibilitas historis. Menggunakan kolom boolean `roster_locked` jauh lebih aman, bersih, dan memungkinkan pemantauan status registrasi secara terisolasi.
+### 1. Placeholder `game_mode` saat Inisialisasi
+* **Pilihan:** Menyetel `game_mode: '1v1'` secara default di backend saat `POST /api/events` dipanggil oleh form Create Event.
+* **Rasional:** Kolom `game_mode` pada database PostgreSQL/Supabase memiliki constraint `NOT NULL CHECK (game_mode IN ('1v1', 'team', 'ffa'))`. Mengubah check constraint database memerlukan migrasi DDL besar yang berisiko. Dengan menyetel placeholder `'1v1'`, kita tetap mematuhi schema database, dan nilai ini akan diperbarui secara bersih dengan nilai akhir pilihan Kreator saat API `/select-game-mode` dipanggil pasca-penutupan roster.
 
-### 2. Antarmuka Draf Bagan Matchup Progresif
-* **Pilihan:** Di halaman detail event, saat `status === 'setup' && roster_locked === true`, tampilkan draf bagan interaktif di mana slot `player_a` dan `player_b` dari setiap draf pertandingan dapat dipilih secara manual via dropdown select.
-* **Rasional:** Dropdown select retro yang akurat memudahkan Kreator menyusun turnamen dari perangkat seluler (Opera MiniPay) dibandingkan antarmuka *drag-and-drop* mouse yang seringkali rusak di layar sentuh kecil.
+### 2. Penambahan kolom `max_participants`
+* **Pilihan:** Menambahkan kolom `max_participants INTEGER DEFAULT 16` pada tabel `events`.
+* **Rasional:** Memberikan batasan kuota pendaftar di frontend untuk kenyamanan Kreator saat inisialisasi turnamen, menggantikan keharusan memilih mode game sejak awal.
+
+### 3. Penyetelan Roster Locked pada Close Signups
+* **Pilihan:** Penyetelan `roster_locked = true` dilakukan *hanya* ketika Kreator menekan tombol **■ CLOSE SIGNUPS ■**.
+* **Rasional:** Tindakan ini berfungsi sebagai pembatas tegas antara fase registrasi terbuka (siapa saja bisa gabung) dengan fase rancangan bagan (daftar pemain dikunci, tidak bisa mendaftar atau membatalkan lagi).
 
 ## Risks / Trade-offs
 
-- **[Risk]** Kreator keluar halaman sebelum draf bracket disimpan atau difinalisasi.
-  * **Mitigasi:** Logika backend akan menyimpan draf bagan ke dalam tabel `brackets` dengan status sementara, atau frontend dapat menyusun draf secara lokal / langsung menyimpannya ke Supabase draf bracket. Kita akan langsung menyimpan draf bracket sementara ke tabel `brackets` agar persistensinya aman. Setiap kali Kreator mengocok ulang atau memodifikasi slot, sistem akan memperbarui baris bagan terkait.
+- **[Risk]** Pemain membatalkan pendaftaran (*withdraw*) atau mendaftar di saat Kreator sedang menyusun draf bagan secara manual.
+  * **Mitigasi:** Karena `roster_locked = true` disetel terlebih dahulu di awal sebelum fase draf bagan terbuka, roster pemain dijamin 100% statis selama Kreator menyusun draf. Tidak ada pemain baru yang bisa mendaftar dan tidak ada pemain terdaftar yang bisa keluar, mencegah kegagalan integritas data matchup.

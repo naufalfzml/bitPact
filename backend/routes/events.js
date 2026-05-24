@@ -21,7 +21,8 @@ router.post("/", async (req, res) => {
   try {
     const {
       title,
-      game_mode,
+      game_mode = "1v1",
+      max_participants = 16,
       team_size = 1,
       ticket_price,
       photo_required = false,
@@ -33,14 +34,14 @@ router.post("/", async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!title || !game_mode || !ticket_price || !creator_address) {
-      return res.status(400).json({ error: "Missing required fields: title, game_mode, ticket_price, creator_address" });
+    if (!title || !ticket_price || !creator_address) {
+      return res.status(400).json({ error: "Missing required fields: title, ticket_price, creator_address" });
     }
     if (!["1v1", "team", "ffa"].includes(game_mode)) {
       return res.status(400).json({ error: "game_mode must be '1v1', 'team', or 'ffa'" });
     }
-    if (!["password", "invite_only"].includes(access_type)) {
-      return res.status(400).json({ error: "access_type must be 'password' or 'invite_only'" });
+    if (access_type !== "public" && !["password", "invite_only"].includes(access_type)) {
+      return res.status(400).json({ error: "access_type must be 'public', 'password' or 'invite_only'" });
     }
 
     // Hash password if access_type is password
@@ -52,12 +53,21 @@ router.post("/", async (req, res) => {
       passwordHash = await bcrypt.hash(password.trim(), 10);
     }
 
+    // Handle 'Not Set' (Unlimited) max_participants mapping to null
+    let maxParticipantsVal = max_participants;
+    if (max_participants === 0 || max_participants === null || max_participants === "0" || max_participants === "") {
+      maxParticipantsVal = null;
+    } else {
+      maxParticipantsVal = Number(max_participants);
+    }
+
     // Insert event into Supabase
     const { data: event, error: dbError } = await supabase
       .from("events")
       .insert({
         title,
         game_mode,
+        max_participants: maxParticipantsVal,
         team_size: game_mode === "team" ? team_size : 1,
         ticket_price,
         photo_required,
@@ -220,6 +230,19 @@ router.post("/:id/register", async (req, res) => {
     if (eventErr || !event) return res.status(404).json({ error: "Event not found" });
     if (event.status !== "setup") {
       return res.status(400).json({ error: "Event registration is closed" });
+    }
+    if (event.roster_locked) {
+      return res.status(400).json({ error: "Pendaftaran turnamen ini sudah ditutup (Roster Locked)" });
+    }
+
+    // Check participant limit
+    const { data: participantsForLimit } = await supabase
+      .from("participants")
+      .select("id")
+      .eq("event_id", id);
+    const currentCount = participantsForLimit?.length ?? 0;
+    if (event.max_participants && currentCount >= event.max_participants) {
+      return res.status(400).json({ error: `Pendaftaran ditolak. Kapasitas maksimum turnamen (${event.max_participants}) sudah terpenuhi.` });
     }
 
     // ── Creator Restriction Guard ──
@@ -535,17 +558,173 @@ router.post("/:id/lock-roster", async (req, res) => {
       return res.status(400).json({ error: "Minimal 2 peserta terdaftar untuk mengunci roster" });
     }
 
-    // Update event status to active (locks registration)
+    // Update event roster_locked to true (keeps status: setup)
     const { error: updateErr } = await supabase
       .from("events")
-      .update({ status: "active" })
+      .update({ roster_locked: true })
       .eq("id", id);
 
     if (updateErr) throw updateErr;
 
-    res.json({ message: "Roster locked, registration closed", status: "active", participant_count: count });
+    res.json({ message: "Roster locked, registration closed", status: "setup", roster_locked: true, participant_count: count });
   } catch (err) {
     console.error("POST /api/events/:id/lock-roster error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  POST /api/events/:id/select-game-mode — Select dynamic game mode & gen blank bracket
+// ──────────────────────────────────────────────
+router.post("/:id/select-game-mode", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { creator_address, game_mode, team_size = 1 } = req.body;
+
+    if (!game_mode || !["1v1", "team", "ffa"].includes(game_mode)) {
+      return res.status(400).json({ error: "Invalid or missing game_mode. Must be '1v1', 'team', or 'ffa'" });
+    }
+
+    const { data: event } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (!event) return res.status(404).json({ error: "Event not found" });
+    if (event.status !== "setup" || !event.roster_locked) {
+      return res.status(400).json({ error: "Event must be in setup phase and roster must be locked" });
+    }
+    if (!creator_address || event.creator_address.toLowerCase() !== creator_address.toLowerCase()) {
+      return res.status(403).json({ error: "Only the event creator can choose the game mode" });
+    }
+
+    // Get current registered participants
+    const { data: participants } = await supabase
+      .from("participants")
+      .select("*")
+      .eq("event_id", id);
+
+    const count = participants?.length ?? 0;
+    if (count < 2) {
+      return res.status(400).json({ error: "Minimal 2 peserta terdaftar untuk menghasilkan bagan draf" });
+    }
+
+    // Update event table with the real game_mode and team_size
+    const { error: updateEventErr } = await supabase
+      .from("events")
+      .update({
+        game_mode,
+        team_size: game_mode === "team" ? team_size : 1
+      })
+      .eq("id", id);
+
+    if (updateEventErr) throw updateEventErr;
+
+    // Delete any old draft brackets
+    await supabase
+      .from("brackets")
+      .delete()
+      .eq("event_id", id);
+
+    // Generate blank Round 1 matches
+    const bracketInserts = [];
+    if (game_mode === "1v1") {
+      const matchCount = Math.ceil(count / 2);
+      for (let i = 0; i < matchCount; i++) {
+        bracketInserts.push({
+          event_id: id,
+          round: 1,
+          match_index: i,
+          player_a: null,
+          player_b: null,
+          winner: null,
+        });
+      }
+    } else if (game_mode === "team") {
+      // 1 match for Red vs Blue
+      bracketInserts.push({
+        event_id: id,
+        round: 1,
+        match_index: 0,
+        player_a: "team-0",
+        player_b: "team-1",
+        winner: null,
+      });
+    }
+
+    if (bracketInserts.length > 0) {
+      const { error: bracketErr } = await supabase
+        .from("brackets")
+        .insert(bracketInserts);
+      if (bracketErr) throw bracketErr;
+    }
+
+    res.json({
+      message: "Game mode selected, blank draft brackets generated",
+      game_mode,
+      participant_count: count,
+      matches_count: bracketInserts.length
+    });
+  } catch (err) {
+    console.error("POST /api/events/:id/select-game-mode error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  POST /api/events/:id/draft-bracket — Save current bracket draft temporarily
+// ──────────────────────────────────────────────
+router.post("/:id/draft-bracket", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { creator_address, matches } = req.body;
+
+    if (!Array.isArray(matches)) {
+      return res.status(400).json({ error: "Missing or invalid matches array" });
+    }
+
+    const { data: event } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (!event) return res.status(404).json({ error: "Event not found" });
+    if (event.status !== "setup" || !event.roster_locked) {
+      return res.status(400).json({ error: "Event must be in setup phase and roster must be locked to draft" });
+    }
+    if (!creator_address || event.creator_address.toLowerCase() !== creator_address.toLowerCase()) {
+      return res.status(403).json({ error: "Only the creator can save bracket drafts" });
+    }
+
+    // Save draft matches
+    for (const match of matches) {
+      // Determine if one is BYE to set winner automatically
+      let winnerVal = null;
+      if (match.player_b === "BYE" && match.player_a) {
+        winnerVal = match.player_a;
+      } else if (match.player_a === "BYE" && match.player_b) {
+        winnerVal = match.player_b;
+      }
+
+      const { error: draftErr } = await supabase
+        .from("brackets")
+        .update({
+          player_a: match.player_a || null,
+          player_b: match.player_b || null,
+          winner: winnerVal
+        })
+        .eq("event_id", id)
+        .eq("round", 1)
+        .eq("match_index", match.match_index);
+
+      if (draftErr) throw draftErr;
+    }
+
+    res.json({ message: "Draft bracket saved successfully" });
+  } catch (err) {
+    console.error("POST /api/events/:id/draft-bracket error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -663,8 +842,11 @@ router.post("/:id/start", async (req, res) => {
       .single();
 
     if (!event) return res.status(404).json({ error: "Event not found" });
-    if (event.status !== "setup" && event.status !== "active") {
-      return res.status(400).json({ error: "Event cannot be started from current state" });
+    if (event.status !== "setup") {
+      return res.status(400).json({ error: "Event is already active or ended" });
+    }
+    if (!event.roster_locked) {
+      return res.status(400).json({ error: "Pendaftaran harus ditutup (Roster Locked) sebelum memulai turnamen" });
     }
 
     const { data: participants } = await supabase
@@ -681,46 +863,33 @@ router.post("/:id/start", async (req, res) => {
       });
     }
 
-    // Generate brackets for 1v1 — supports odd numbers with BYE system
-    if (event.game_mode === "1v1") {
-      const shuffled = participants.sort(() => Math.random() - 0.5);
-      const bracketInserts = [];
+    // Fetch existing brackets to validate
+    const { data: brackets } = await supabase
+      .from("brackets")
+      .select("*")
+      .eq("event_id", id)
+      .eq("round", 1);
 
-      for (let i = 0; i < shuffled.length; i += 2) {
-        if (i + 1 < shuffled.length) {
-          // Normal matchup
-          bracketInserts.push({
-            event_id: id,
-            round: 1,
-            match_index: Math.floor(i / 2),
-            player_a: shuffled[i].wallet_address,
-            player_b: shuffled[i + 1].wallet_address,
-          });
-        } else {
-          // Odd player gets BYE — auto-advances to next round
-          bracketInserts.push({
-            event_id: id,
-            round: 1,
-            match_index: Math.floor(i / 2),
-            player_a: shuffled[i].wallet_address,
-            player_b: "BYE",
-            winner: shuffled[i].wallet_address, // Auto-advance
+    if (!brackets || brackets.length === 0) {
+      return res.status(400).json({ error: "Draf bagan pertandingan belum di-generate" });
+    }
+
+    // 1v1 Bracket Validation
+    if (event.game_mode === "1v1") {
+      // Validate that all slots are filled
+      for (const match of brackets) {
+        if (!match.player_a || !match.player_b) {
+          return res.status(400).json({
+            error: `Pertandingan ${match.match_index + 1} masih memiliki slot kosong. Lengkapi draf bagan terlebih dahulu.`
           });
         }
       }
-
-      const { error: bracketErr } = await supabase
-        .from("brackets")
-        .insert(bracketInserts);
-
-      if (bracketErr) throw bracketErr;
     }
 
-    // Generate teams for Team mode — supports asymmetrical sizing
+    // Team mode setup
     if (event.game_mode === "team") {
+      // Shuffled and split into 2 teams
       const shuffled = participants.sort(() => Math.random() - 0.5);
-
-      // Split into 2 teams: team 0 gets ceil(n/2), team 1 gets floor(n/2)
       const teamASize = Math.ceil(count / 2);
 
       for (let i = 0; i < shuffled.length; i++) {
@@ -731,18 +900,19 @@ router.post("/:id/start", async (req, res) => {
           .eq("id", shuffled[i].id);
       }
 
-      // Create single team bracket (Team 0 vs Team 1)
-      const { error: bracketErr } = await supabase
-        .from("brackets")
-        .insert({
-          event_id: id,
-          round: 1,
-          match_index: 0,
-          player_a: "team-0",
-          player_b: "team-1",
-        });
-
-      if (bracketErr) throw bracketErr;
+      // Ensure Team match exists (it was created in select-game-mode, but double check)
+      const hasTeamMatch = brackets.some(m => m.match_index === 0);
+      if (!hasTeamMatch) {
+        await supabase
+          .from("brackets")
+          .insert({
+            event_id: id,
+            round: 1,
+            match_index: 0,
+            player_a: "team-0",
+            player_b: "team-1",
+          });
+      }
     }
 
     // Update event status to active
@@ -753,7 +923,7 @@ router.post("/:id/start", async (req, res) => {
 
     if (updateErr) throw updateErr;
 
-    res.json({ message: "Event started", status: "active" });
+    res.json({ message: "Event started successfully", status: "active" });
   } catch (err) {
     console.error("POST /api/events/:id/start error:", err);
     res.status(500).json({ error: err.message });

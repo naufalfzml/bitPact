@@ -10,8 +10,7 @@ export default function CreateEventPage() {
   const { address, isConnected } = useAccount();
 
   const [title, setTitle] = useState("");
-  const [gameMode, setGameMode] = useState<"1v1" | "team" | "ffa">("1v1");
-  const [teamSize, setTeamSize] = useState(2);
+  const [maxParticipants, setMaxParticipants] = useState<number>(16);
   const [ticketPrice, setTicketPrice] = useState("");
   const [photoRequired, setPhotoRequired] = useState(false);
   const [consensusThreshold, setConsensusThreshold] = useState(51);
@@ -60,8 +59,8 @@ export default function CreateEventPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
-          game_mode: gameMode,
-          team_size: gameMode === "team" ? Number(teamSize) : 1,
+          game_mode: "1v1",
+          max_participants: Number(maxParticipants),
           ticket_price: ticketPrice,
           photo_required: photoRequired,
           consensus_threshold: Number(consensusThreshold),
@@ -118,37 +117,24 @@ export default function CreateEventPage() {
             />
           </div>
 
-          {/* Game Mode */}
+          {/* Max Participants */}
           <div className="bp-field">
-            <label className="bp-label">Game Mode *</label>
+            <label className="bp-label">Max Participants *</label>
             <select
               className="bp-select"
-              value={gameMode}
-              onChange={(e) => setGameMode(e.target.value as any)}
+              style={{ appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }}
+              value={maxParticipants}
+              onChange={(e) => setMaxParticipants(Number(e.target.value))}
               disabled={loading}
             >
-              <option value="1v1">1v1 PvP Bracket</option>
-              <option value="team">Team PvP Bracket</option>
-              <option value="ffa">Free For All (Leaderboard)</option>
+              <option value={0}>■ NOT SET (Unlimited Players)</option>
+              <option value={4}>4 Players (Mini-Bracket)</option>
+              <option value={8}>8 Players (Quarter-Finals)</option>
+              <option value={16}>16 Players (Standard)</option>
+              <option value={32}>32 Players (Grand Stage)</option>
+              <option value={64}>64 Players (Epic Tournament)</option>
             </select>
           </div>
-
-          {/* Team Size (only if Team mode) */}
-          {gameMode === "team" && (
-            <div className="bp-field">
-              <label className="bp-label">Team Size *</label>
-              <input
-                type="number"
-                min="2"
-                max="10"
-                className="bp-input"
-                value={teamSize}
-                onChange={(e) => setTeamSize(Number(e.target.value))}
-                required
-                disabled={loading}
-              />
-            </div>
-          )}
 
           {/* Ticket Price */}
           <div className="bp-field">
