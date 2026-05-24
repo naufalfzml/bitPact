@@ -8,6 +8,7 @@ const {
   uuidToBytes32,
   parseEther,
 } = require("../lib/blockchain");
+const { getRegeneratedReputation } = require("../lib/reputationHelper");
 
 const router = express.Router();
 
@@ -192,6 +193,14 @@ router.get("/:id", async (req, res) => {
 // ──────────────────────────────────────────────
 //  POST /api/events/:id/register
 // ──────────────────────────────────────────────
+// Helper to get Blockscout API URL based on network
+const getBlockscoutApiUrl = () => {
+  const network = process.env.CELO_NETWORK || "sepolia";
+  if (network === "mainnet") return "https://celo.blockscout.com/api";
+  if (network === "alfajores") return "https://celo-alfajores.blockscout.com/api";
+  return "https://celo-sepolia.blockscout.com/api";
+};
+
 router.post("/:id/register", async (req, res) => {
   try {
     const { id } = req.params;
@@ -216,6 +225,16 @@ router.post("/:id/register", async (req, res) => {
     // ── Creator Restriction Guard ──
     if (wallet_address.toLowerCase() === event.creator_address.toLowerCase()) {
       return res.status(403).json({ error: "Kreator tidak diizinkan untuk mendaftar ke turnamen buatan sendiri" });
+    }
+
+    // ── Reputation Guard Check (HP/Reputation Score must be >= 50) ──
+    const repData = await getRegeneratedReputation(wallet_address);
+    const currentReputation = repData.current_hp;
+    
+    if (currentReputation < 50) {
+      return res.status(403).json({
+        error: `Pendaftaran ditolak. Skor HP Reputasi Anda (${currentReputation}/100) masih dalam masa hukuman/pemulihan (minimal 50). HP Anda bertambah +1 secara berkala seiring waktu berjalan. Silakan tunggu beberapa saat lagi.`,
+      });
     }
 
     // ── Password Validation Guard ──
@@ -253,7 +272,138 @@ router.post("/:id/register", async (req, res) => {
 
     if (existing) return res.status(409).json({ error: "Already registered" });
 
-    // Insert participant
+    // ── Double Blockchain Verification: Blockscout API & Direct RPC ──
+    let isTxSuccess = false;
+    let isBlockscoutVerified = false;
+    let blockscoutCheckAttempted = false;
+    let isRegisteredInContract = false;
+
+    // Check if this is a Social Connect invite bypass
+    if (tx_hash === "social-connect-invite") {
+      isTxSuccess = true;
+      isBlockscoutVerified = true;
+      isRegisteredInContract = true;
+      console.log("Bypassing on-chain transaction receipt check for Social Connect invite.");
+    }
+
+    // 1. Blockscout API Verification
+    if (tx_hash !== "social-connect-invite") {
+      try {
+        const blockscoutApi = getBlockscoutApiUrl();
+        const blockscoutUrl = `${blockscoutApi}?module=proxy&action=eth_getTransactionReceipt&txhash=${tx_hash}`;
+        
+        console.log(`Verifying tx ${tx_hash} via Blockscout: ${blockscoutUrl}`);
+        blockscoutCheckAttempted = true;
+
+        const blockscoutRes = await fetch(blockscoutUrl, { signal: AbortSignal.timeout(6000) });
+        if (blockscoutRes.ok) {
+          const blockscoutData = await blockscoutRes.json();
+          const blockscoutReceipt = blockscoutData?.result;
+          
+          if (blockscoutReceipt) {
+            const status = blockscoutReceipt.status;
+            const toAddress = blockscoutReceipt.to;
+            const fromAddress = blockscoutReceipt.from;
+
+            const isSuccess = status === "0x1" || status === "1";
+            const isCorrectVault = toAddress && toAddress.toLowerCase() === VAULT_ADDRESS.toLowerCase();
+            const isCorrectSender = fromAddress && fromAddress.toLowerCase() === wallet_address.toLowerCase();
+
+            if (isSuccess && isCorrectVault && isCorrectSender) {
+              isBlockscoutVerified = true;
+              isTxSuccess = true;
+              console.log("Transaction successfully verified via Blockscout API!");
+            } else {
+              console.warn("Blockscout validation mismatch details:", { isSuccess, isCorrectVault, isCorrectSender });
+            }
+          }
+        }
+      } catch (blockscoutErr) {
+        console.error("Blockscout API verification error (falling back to RPC):", blockscoutErr);
+      }
+    }
+
+    // 2. Direct On-Chain RPC Verification (Fallback or double-check)
+    if (tx_hash !== "social-connect-invite" && !isBlockscoutVerified) {
+      try {
+        console.log("Validating transaction via public RPC node...");
+        const receipt = await publicClient.getTransactionReceipt({ hash: tx_hash });
+
+        if (receipt.status !== "success") {
+          return res.status(400).json({
+            error: "Transaksi blockchain gagal (reverted). Pendaftaran ditolak.",
+            tx_status: receipt.status,
+          });
+        }
+
+        // Verify transaction was sent to the vault contract
+        if (receipt.to && receipt.to.toLowerCase() !== VAULT_ADDRESS.toLowerCase()) {
+          return res.status(400).json({
+            error: "Transaksi tidak ditujukan ke kontrak vault yang benar.",
+            expected: VAULT_ADDRESS,
+            actual: receipt.to,
+          });
+        }
+
+        // Verify sender
+        if (receipt.from && receipt.from.toLowerCase() !== wallet_address.toLowerCase()) {
+          return res.status(400).json({
+            error: "Transaksi tidak dikirim oleh dompet pendaftar.",
+            expected: wallet_address,
+            actual: receipt.from,
+          });
+        }
+
+        isTxSuccess = true;
+      } catch (receiptErr) {
+        console.error("RPC Receipt validation failed:", receiptErr);
+        return res.status(400).json({
+          error: "Tidak dapat memvalidasi transaksi on-chain. Pastikan hash transaksi valid.",
+        });
+      }
+    }
+
+    // 3. Contract State Verification: Double-check 'isParticipant' view function on the Vault
+    if (tx_hash !== "social-connect-invite") {
+      try {
+        const eventIdBytes32 = uuidToBytes32(id);
+        isRegisteredInContract = await publicClient.readContract({
+          address: VAULT_ADDRESS,
+          abi: VAULT_ABI,
+          functionName: "isParticipant",
+          args: [eventIdBytes32, wallet_address],
+        });
+        console.log(`Direct on-chain read 'isParticipant' result: ${isRegisteredInContract}`);
+      } catch (contractErr) {
+        console.error("Failed to read isParticipant from vault contract:", contractErr);
+      }
+
+      // Ensure they are actually registered on-chain in the contract
+      if (isTxSuccess && !isRegisteredInContract) {
+        console.warn("Transaction succeeded but isParticipant returned false. Possible race condition or mismatch. Waiting 1.5s to retry...");
+        // A quick retry in case of slight delay
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        try {
+          const eventIdBytes32 = uuidToBytes32(id);
+          isRegisteredInContract = await publicClient.readContract({
+            address: VAULT_ADDRESS,
+            abi: VAULT_ABI,
+            functionName: "isParticipant",
+            args: [eventIdBytes32, wallet_address],
+          });
+        } catch (contractErr) {
+          console.error("Retry of isParticipant check failed:", contractErr);
+        }
+      }
+    }
+
+    if (!isRegisteredInContract) {
+      return res.status(400).json({
+        error: "Verifikasi kontrak gagal. Dompet Anda belum tercatat sebagai peserta aktif untuk event ini di blockchain.",
+      });
+    }
+
+    // Insert participant (only after successful on-chain validation)
     const { data: participant, error: insertErr } = await supabase
       .from("participants")
       .insert({ event_id: id, wallet_address, status: "registered" })
@@ -354,7 +504,153 @@ router.post("/:id/whitelist", async (req, res) => {
 });
 
 // ──────────────────────────────────────────────
-//  POST /api/events/:id/start
+//  POST /api/events/:id/lock-roster — Close registration early
+// ──────────────────────────────────────────────
+router.post("/:id/lock-roster", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { creator_address } = req.body;
+
+    const { data: event } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (!event) return res.status(404).json({ error: "Event not found" });
+    if (event.status !== "setup") {
+      return res.status(400).json({ error: "Event is not in setup phase" });
+    }
+    if (!creator_address || event.creator_address.toLowerCase() !== creator_address.toLowerCase()) {
+      return res.status(403).json({ error: "Only the event creator can lock the roster" });
+    }
+
+    const { data: participants } = await supabase
+      .from("participants")
+      .select("*")
+      .eq("event_id", id);
+
+    const count = participants?.length ?? 0;
+    if (count < 2) {
+      return res.status(400).json({ error: "Minimal 2 peserta terdaftar untuk mengunci roster" });
+    }
+
+    // Update event status to active (locks registration)
+    const { error: updateErr } = await supabase
+      .from("events")
+      .update({ status: "active" })
+      .eq("id", id);
+
+    if (updateErr) throw updateErr;
+
+    res.json({ message: "Roster locked, registration closed", status: "active", participant_count: count });
+  } catch (err) {
+    console.error("POST /api/events/:id/lock-roster error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  POST /api/events/:id/distribute — Manual quorum-based prize distribution
+// ──────────────────────────────────────────────
+router.post("/:id/distribute", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { creator_address } = req.body;
+
+    const { data: event } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (!event) return res.status(404).json({ error: "Event not found" });
+    if (event.status !== "voting") {
+      return res.status(400).json({ error: "Event is not in voting phase" });
+    }
+    if (!creator_address || event.creator_address.toLowerCase() !== creator_address.toLowerCase()) {
+      return res.status(403).json({ error: "Only the event creator can trigger distribution" });
+    }
+
+    // Check quorum: at least 51% of participants have voted
+    const { data: allParticipants } = await supabase
+      .from("participants")
+      .select("id")
+      .eq("event_id", id);
+
+    const { data: allVotes } = await supabase
+      .from("votes")
+      .select("is_valid")
+      .eq("event_id", id);
+
+    const totalParticipants = allParticipants?.length ?? 0;
+    const totalVotes = allVotes?.length ?? 0;
+
+    if (totalParticipants === 0) {
+      return res.status(400).json({ error: "No participants found" });
+    }
+
+    const quorumPercent = (totalVotes / totalParticipants) * 100;
+    if (quorumPercent < 51) {
+      return res.status(400).json({
+        error: `Kuorum belum tercapai. Butuh minimal 51% suara, saat ini ${quorumPercent.toFixed(1)}% (${totalVotes}/${totalParticipants}).`,
+        quorum_percent: quorumPercent,
+      });
+    }
+
+    // Resolve consensus based on current votes
+    await resolveConsensus(id);
+
+    res.json({ message: "Distribution triggered successfully", quorum_percent: quorumPercent });
+  } catch (err) {
+    console.error("POST /api/events/:id/distribute error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  POST /api/events/:id/remove-participant — Remove participant (creator only, setup phase)
+// ──────────────────────────────────────────────
+router.post("/:id/remove-participant", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { creator_address, wallet_address } = req.body;
+
+    if (!creator_address || !wallet_address) {
+      return res.status(400).json({ error: "Missing creator_address or wallet_address" });
+    }
+
+    const { data: event } = await supabase
+      .from("events")
+      .select("creator_address, status")
+      .eq("id", id)
+      .single();
+
+    if (!event) return res.status(404).json({ error: "Event not found" });
+    if (event.status !== "setup") {
+      return res.status(400).json({ error: "Can only remove participants during setup phase" });
+    }
+    if (event.creator_address.toLowerCase() !== creator_address.toLowerCase()) {
+      return res.status(403).json({ error: "Only the event creator can remove participants" });
+    }
+
+    const { error: delErr } = await supabase
+      .from("participants")
+      .delete()
+      .eq("event_id", id)
+      .eq("wallet_address", wallet_address);
+
+    if (delErr) throw delErr;
+
+    res.json({ message: "Participant removed", wallet_address });
+  } catch (err) {
+    console.error("POST /api/events/:id/remove-participant error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  POST /api/events/:id/start — Start tournament with dynamic brackets (BYE + asymmetrical teams)
 // ──────────────────────────────────────────────
 router.post("/:id/start", async (req, res) => {
   try {
@@ -367,8 +663,8 @@ router.post("/:id/start", async (req, res) => {
       .single();
 
     if (!event) return res.status(404).json({ error: "Event not found" });
-    if (event.status !== "setup") {
-      return res.status(400).json({ error: "Event already started" });
+    if (event.status !== "setup" && event.status !== "active") {
+      return res.status(400).json({ error: "Event cannot be started from current state" });
     }
 
     const { data: participants } = await supabase
@@ -378,35 +674,39 @@ router.post("/:id/start", async (req, res) => {
 
     const count = participants?.length ?? 0;
 
-    // Validate participant count by game mode
-    if (event.game_mode === "1v1") {
-      if (count < 2 || (count & (count - 1)) !== 0) {
-        return res.status(400).json({
-          error: `1v1 mode requires 2^n participants (2, 4, 8, 16...). Current: ${count}`,
-        });
-      }
-    } else if (event.game_mode === "team") {
-      if (count < event.team_size * 2 || count % event.team_size !== 0) {
-        return res.status(400).json({
-          error: `Team mode requires participants divisible by team_size (${event.team_size}). Current: ${count}`,
-        });
-      }
+    // Minimal validation: at least 2 participants
+    if (count < 2) {
+      return res.status(400).json({
+        error: `Minimal 2 peserta terdaftar untuk memulai turnamen. Saat ini: ${count}`,
+      });
     }
-    // FFA: no count constraint
 
-    // Generate brackets for 1v1
+    // Generate brackets for 1v1 — supports odd numbers with BYE system
     if (event.game_mode === "1v1") {
       const shuffled = participants.sort(() => Math.random() - 0.5);
       const bracketInserts = [];
 
       for (let i = 0; i < shuffled.length; i += 2) {
-        bracketInserts.push({
-          event_id: id,
-          round: 1,
-          match_index: Math.floor(i / 2),
-          player_a: shuffled[i].wallet_address,
-          player_b: shuffled[i + 1].wallet_address,
-        });
+        if (i + 1 < shuffled.length) {
+          // Normal matchup
+          bracketInserts.push({
+            event_id: id,
+            round: 1,
+            match_index: Math.floor(i / 2),
+            player_a: shuffled[i].wallet_address,
+            player_b: shuffled[i + 1].wallet_address,
+          });
+        } else {
+          // Odd player gets BYE — auto-advances to next round
+          bracketInserts.push({
+            event_id: id,
+            round: 1,
+            match_index: Math.floor(i / 2),
+            player_a: shuffled[i].wallet_address,
+            player_b: "BYE",
+            winner: shuffled[i].wallet_address, // Auto-advance
+          });
+        }
       }
 
       const { error: bracketErr } = await supabase
@@ -416,38 +716,33 @@ router.post("/:id/start", async (req, res) => {
       if (bracketErr) throw bracketErr;
     }
 
-    // Generate teams for Team mode
+    // Generate teams for Team mode — supports asymmetrical sizing
     if (event.game_mode === "team") {
       const shuffled = participants.sort(() => Math.random() - 0.5);
-      const teamCount = Math.floor(count / event.team_size);
 
-      // Assign team IDs
+      // Split into 2 teams: team 0 gets ceil(n/2), team 1 gets floor(n/2)
+      const teamASize = Math.ceil(count / 2);
+
       for (let i = 0; i < shuffled.length; i++) {
-        const teamId = Math.floor(i / event.team_size);
+        const teamId = i < teamASize ? 0 : 1;
         await supabase
           .from("participants")
           .update({ team_id: teamId })
           .eq("id", shuffled[i].id);
       }
 
-      // Create team brackets (team 0 vs team 1, team 2 vs team 3...)
-      const bracketInserts = [];
-      for (let i = 0; i < teamCount; i += 2) {
-        bracketInserts.push({
+      // Create single team bracket (Team 0 vs Team 1)
+      const { error: bracketErr } = await supabase
+        .from("brackets")
+        .insert({
           event_id: id,
           round: 1,
-          match_index: Math.floor(i / 2),
-          player_a: `team-${i}`,
-          player_b: `team-${i + 1}`,
+          match_index: 0,
+          player_a: "team-0",
+          player_b: "team-1",
         });
-      }
 
-      if (bracketInserts.length > 0) {
-        const { error: bracketErr } = await supabase
-          .from("brackets")
-          .insert(bracketInserts);
-        if (bracketErr) throw bracketErr;
-      }
+      if (bracketErr) throw bracketErr;
     }
 
     // Update event status to active
@@ -942,6 +1237,59 @@ async function resolveConsensus(eventId) {
     }
   }
 }
+// ──────────────────────────────────────────────
+//  GET /api/events/leaderboard/reputation — Reputation Leaderboard
+// ──────────────────────────────────────────────
+router.get("/leaderboard/reputation", async (_req, res) => {
+  try {
+    // Get the latest reputation score for each unique wallet
+    const { data: reputations, error } = await supabase
+      .from("reputation_tracking")
+      .select("wallet_address, reputation_score, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    // De-duplicate: keep only the latest score per wallet
+    const latestByWallet = {};
+    for (const r of (reputations ?? [])) {
+      if (!latestByWallet[r.wallet_address]) {
+        latestByWallet[r.wallet_address] = r;
+      }
+    }
+
+    // Sort by reputation_score descending
+    const leaderboard = Object.values(latestByWallet)
+      .sort((a, b) => b.reputation_score - a.reputation_score)
+      .slice(0, 50); // Top 50
+
+    res.json(leaderboard);
+  } catch (err) {
+    console.error("GET /api/events/leaderboard/reputation error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+//  GET /api/events/reputation/:wallet — Get reputation for a specific wallet
+// ──────────────────────────────────────────────
+router.get("/reputation/:wallet", async (req, res) => {
+  try {
+    const { wallet } = req.params;
+    const repData = await getRegeneratedReputation(wallet);
+
+    res.json({ 
+      wallet_address: wallet, 
+      reputation_score: repData.current_hp,
+      base_score: repData.base_score,
+      points_regenerated: repData.points_gained,
+      latest_penalty_at: repData.latest_penalty_at
+    });
+  } catch (err) {
+    console.error("GET /api/events/reputation/:wallet error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Export for use in cron and main app
 module.exports = router;

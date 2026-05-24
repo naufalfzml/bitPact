@@ -11,3 +11,11 @@ backend/node_modules/
 contracts/out/
 contracts/cache/
 contracts/broadcast/
+
+# Environment configurations & Secrets
+.env
+.env.local
+.env.*
+backend/.env
+frontend/.env
+frontend/.env.local

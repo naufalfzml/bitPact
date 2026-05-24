@@ -607,3 +607,149 @@ a:hover {
   padding-bottom: var(--bp-space-md);
   margin-bottom: var(--bp-space-xl);
 }
+
+/* ── RPG Status Bar ── */
+.bp-rpg-status {
+  display: flex;
+  gap: 8px;
+  font-family: var(--bp-font);
+  font-size: 0.4rem;
+  letter-spacing: 0.5px;
+}
+
+.bp-rpg-hp {
+  color: var(--bp-red);
+  padding: 3px 6px;
+  border: 1px solid var(--bp-red);
+  background: rgba(255, 7, 58, 0.1);
+}
+
+.bp-rpg-bag {
+  color: var(--bp-primary);
+  padding: 3px 6px;
+  border: 1px solid var(--bp-primary);
+  background: rgba(226, 226, 8, 0.1);
+}
+
+.bp-rpg-gas {
+  color: var(--bp-cyan);
+  padding: 3px 6px;
+  border: 1px solid var(--bp-cyan);
+  background: rgba(0, 245, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+  .bp-rpg-status {
+    display: none;
+  }
+}
+
+/* ── Team Roster Visual Grouping ── */
+.bp-team-group {
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 2px double;
+}
+
+.bp-team-group.team-red {
+  border-color: var(--bp-red);
+  background: rgba(255, 7, 58, 0.05);
+}
+
+.bp-team-group.team-blue {
+  border-color: var(--bp-cyan);
+  background: rgba(0, 245, 255, 0.05);
+}
+
+.bp-team-group-title {
+  font-family: var(--bp-font);
+  font-size: var(--bp-font-xs);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.bp-team-group.team-red .bp-team-group-title {
+  color: var(--bp-red);
+}
+
+.bp-team-group.team-blue .bp-team-group-title {
+  color: var(--bp-cyan);
+}
+
+/* ── Whitelist Banners ── */
+.bp-whitelist-banner {
+  padding: 12px 16px;
+  text-align: center;
+  font-family: var(--bp-font);
+  font-size: var(--bp-font-xs);
+  letter-spacing: 1px;
+  border: 2px double;
+  margin-bottom: 12px;
+}
+
+.bp-whitelist-banner.approved {
+  border-color: var(--bp-green);
+  color: var(--bp-green);
+  background: rgba(57, 255, 20, 0.08);
+}
+
+.bp-whitelist-banner.denied {
+  border-color: var(--bp-red);
+  color: var(--bp-red);
+  background: rgba(255, 7, 58, 0.08);
+}
+
+/* ── Voting Penalty Warning ── */
+.bp-penalty-warning {
+  padding: 12px 16px;
+  text-align: center;
+  font-family: var(--bp-font);
+  font-size: var(--bp-font-xs);
+  letter-spacing: 0.5px;
+  color: var(--bp-accent);
+  border: 2px double var(--bp-accent);
+  background: rgba(255, 107, 53, 0.08);
+  margin-bottom: 16px;
+}
+
+/* ── Delete Player Button ── */
+.bp-btn-delete {
+  font-family: var(--bp-font);
+  font-size: 0.4rem;
+  color: var(--bp-red);
+  background: rgba(255, 7, 58, 0.1);
+  border: 1px solid var(--bp-red);
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.bp-btn-delete:hover {
+  background: rgba(255, 7, 58, 0.25);
+}
+
+/* ── Distribute Prize Button ── */
+.bp-btn-distribute {
+  font-family: var(--bp-font);
+  font-size: var(--bp-font-sm);
+  color: var(--bp-black);
+  background: var(--bp-green);
+  border: 2px solid var(--bp-green-dim);
+  padding: 12px 20px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  width: 100%;
+  text-align: center;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.bp-btn-distribute:hover {
+  background: var(--bp-green-dim);
+  transform: scale(1.02);
+}
+
+.bp-btn-distribute:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}

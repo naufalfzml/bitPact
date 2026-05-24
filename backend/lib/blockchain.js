@@ -9,11 +9,17 @@ const {
   getContract,
 } = require("viem");
 const { privateKeyToAccount } = require("viem/accounts");
-const { celo, celoAlfajores } = require("viem/chains");
+const { celo, celoAlfajores, celoSepolia } = require("viem/chains");
 
 // Determine target chain from environment
-const targetChain =
-  process.env.CELO_NETWORK === "mainnet" ? celo : celoAlfajores;
+const getTargetChain = () => {
+  const network = process.env.CELO_NETWORK || "sepolia";
+  if (network === "mainnet") return celo;
+  if (network === "alfajores") return celoAlfajores;
+  return celoSepolia;
+};
+
+const targetChain = getTargetChain();
 
 // Viem Public Client — for reading on-chain data
 const publicClient = createPublicClient({

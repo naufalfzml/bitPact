@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { parseEther, keccak256, stringToBytes } from "viem";
 import { API_BASE_URL, VAULT_CONTRACT_ADDRESS, CUSD_TOKEN_ADDRESS, VAULT_ABI, CUSD_ABI } from "@/constants";
+import { generateGamerTag } from "@/app/components/ConnectButtonClient";
 
 interface Participant {
   id: string;
@@ -52,6 +53,7 @@ export default function EventDetailPage() {
 
   const { address, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
 
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -163,7 +165,7 @@ export default function EventDetailPage() {
     setPasswordError(null);
     setStatusMessage("STEP 1: APPROVING CUSD TRANSACTIONS...");
     try {
-      const ticketPriceWei = parseEther(event.ticket_price);
+      const ticketPriceWei = parseEther(String(event.ticket_price));
       const eventIdBytes32 = keccak256(stringToBytes(event.id));
 
       // 1. Approve cUSD Transfer
@@ -185,6 +187,16 @@ export default function EventDetailPage() {
         args: [eventIdBytes32],
       });
       console.log("Register Tx Hash:", registerTx);
+
+      setStatusMessage("■ CONFIRMING TRANSACTION... ■");
+
+      // 2.5. Wait for transaction receipt on-chain before proceeding
+      if (publicClient) {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: registerTx });
+        if (receipt.status !== "success") {
+          throw new Error("Transaksi blockchain gagal (reverted). Pendaftaran ditolak.");
+        }
+      }
 
       setStatusMessage("STEP 3: SECURING YOUR SEAT IN DATABASE...");
 
@@ -505,16 +517,22 @@ export default function EventDetailPage() {
                     </button>
                   </div>
                 ) : event.access_type === "invite_only" && !isWhitelisted ? (
-                  /* Invite-only: user not on whitelist */
-                  <div className="bp-text-center" style={{ padding: "16px 8px", border: "2px solid var(--bp-cyan)", background: "rgba(0,255,255,0.05)" }}>
-                    <p className="bp-text-xs" style={{ color: "var(--bp-cyan)", letterSpacing: "1px" }}>■ KHUSUS UNDANGAN ■</p>
-                    <p className="bp-text-xs bp-text-muted bp-mt-sm">
+                  /* Invite-only: user not on whitelist — RED denied banner */
+                  <div className="bp-whitelist-banner denied">
+                    ■ AKSES TERBATAS: ANDA TIDAK DIUNDANG ■
+                    <p className="bp-text-xs bp-text-muted" style={{ marginTop: "8px", color: "var(--bp-muted)" }}>
                       Turnamen ini hanya untuk peserta yang diundang. Hubungi penyelenggara untuk mendapatkan akses.
                     </p>
                   </div>
                 ) : (
                   /* Public or whitelisted invite-only: normal registration */
                   <div>
+                    {/* Whitelist approved banner for invite-only events */}
+                    {event.access_type === "invite_only" && isWhitelisted && (
+                      <div className="bp-whitelist-banner approved">
+                        ■ ANDA TERDAFTAR DI WHITELIST ■
+                      </div>
+                    )}
                     <p className="bp-text-xs bp-text-muted bp-mb-md">
                       Join this tournament by locking your {event.ticket_price} cUSD entrance fee in our secure escrow.
                     </p>
@@ -733,20 +751,53 @@ export default function EventDetailPage() {
 
             {event.participants.length === 0 ? (
               <p className="bp-text-xs bp-text-muted">No players signed up yet.</p>
+            ) : event.game_mode === "team" && event.status !== "setup" ? (
+              /* Team mode: show grouped by team with visual distinction */
+              <div>
+                {[0, 1].map((teamId) => {
+                  const teamPlayers = event.participants.filter((p) => p.team_id === teamId);
+                  if (teamPlayers.length === 0) return null;
+                  return (
+                    <div key={teamId} className={`bp-team-group ${teamId === 0 ? "team-red" : "team-blue"}`}>
+                      <div className="bp-team-group-title">
+                        {teamId === 0 ? "■ TEAM RED ■" : "■ TEAM BLUE ■"} ({teamPlayers.length})
+                      </div>
+                      {teamPlayers.map((p) => (
+                        <div key={p.id} className="bp-flex bp-justify-between bp-items-center" style={{ padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                          <span className="bp-text-xs">
+                            <span style={{ color: "var(--bp-green)" }}>{generateGamerTag(p.wallet_address)}</span>
+                            <span className="bp-text-muted" style={{ fontSize: "0.35rem", marginLeft: "6px" }}>
+                              {p.wallet_address.slice(0, 6)}...{p.wallet_address.slice(-4)}
+                            </span>
+                          </span>
+                          <span className="bp-text-xs" style={{ color: p.status === "winner" ? "var(--bp-green)" : p.status === "eliminated" ? "var(--bp-red)" : "var(--bp-cyan)" }}>
+                            {p.status.toUpperCase()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
-              <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+              /* Default roster list with gamer tags and delete button */
+              <div style={{ maxHeight: "300px", overflowY: "auto" }}>
                 <table className="bp-leaderboard">
                   <thead>
                     <tr>
-                      <th>WALLET ADDRESS</th>
+                      <th>PLAYER</th>
                       <th>STATUS</th>
+                      {isCreator && event.status === "setup" && <th>ACTION</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {event.participants.map((p) => (
                       <tr key={p.id}>
-                        <td className="bp-text-xs" style={{ wordBreak: "break-all" }}>
-                          {p.wallet_address.slice(0, 10)}...{p.wallet_address.slice(-8)}
+                        <td className="bp-text-xs">
+                          <span style={{ color: "var(--bp-green)" }}>{generateGamerTag(p.wallet_address)}</span>
+                          <span className="bp-text-muted" style={{ display: "block", fontSize: "0.35rem", marginTop: "2px" }}>
+                            {p.wallet_address.slice(0, 10)}...{p.wallet_address.slice(-6)}
+                          </span>
                         </td>
                         <td>
                           <span
@@ -758,6 +809,27 @@ export default function EventDetailPage() {
                             {p.status.toUpperCase()}
                           </span>
                         </td>
+                        {isCreator && event.status === "setup" && (
+                          <td>
+                            <button
+                              className="bp-btn-delete"
+                              onClick={async () => {
+                                if (!confirm(`Hapus ${generateGamerTag(p.wallet_address)} dari roster?`)) return;
+                                try {
+                                  const res = await fetch(`${API_BASE_URL}/events/${event.id}/remove-participant`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ creator_address: address, wallet_address: p.wallet_address }),
+                                  });
+                                  if (!res.ok) throw new Error("Failed");
+                                  fetchEventDetail();
+                                } catch { alert("Gagal menghapus peserta"); }
+                              }}
+                            >
+                              ■ DEL ■
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -777,14 +849,36 @@ export default function EventDetailPage() {
               {event.status === "setup" && (
                 <div>
                   <p className="bp-text-xs bp-text-muted bp-mb-md">
-                    Start the tournament to lock signups, team distributions, and generate the dynamic matchups.
+                    Lock the roster to close signups, then start the tournament to generate dynamic matchups.
                   </p>
-                  <button
-                    className="bp-btn bp-btn-primary bp-w-full"
-                    onClick={handleStartTournament}
-                  >
-                    ■ Start Tournament & Shuffler
-                  </button>
+                  <div className="bp-flex bp-flex-col bp-gap-sm">
+                    <button
+                      className="bp-btn bp-btn-accent bp-w-full"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`${API_BASE_URL}/events/${event.id}/lock-roster`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ creator_address: address }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error || "Gagal mengunci roster");
+                          alert(`Roster dikunci! ${data.participant_count} peserta terdaftar.`);
+                          fetchEventDetail();
+                        } catch (err: any) {
+                          alert(`Error: ${err.message}`);
+                        }
+                      }}
+                    >
+                      ■ LOCK ROSTER ■
+                    </button>
+                    <button
+                      className="bp-btn bp-btn-primary bp-w-full"
+                      onClick={handleStartTournament}
+                    >
+                      ■ Start Tournament & Shuffler
+                    </button>
+                  </div>
                 </div>
               )}
 

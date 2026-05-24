@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { API_BASE_URL } from "@/constants";
+import { generateGamerTag } from "@/app/components/ConnectButtonClient";
 
 interface Participant {
   id: string;
@@ -16,6 +17,7 @@ interface EventDetail {
   title: string;
   status: "setup" | "active" | "voting" | "ended" | "disputed";
   consensus_threshold: number;
+  creator_address: string;
   participants: Participant[];
   voting: {
     total: number;
@@ -35,6 +37,7 @@ export default function VotingConsolePage() {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [distributing, setDistributing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -73,6 +76,15 @@ export default function VotingConsolePage() {
   const isParticipant = address && event.participants.some(
     (p) => p.wallet_address.toLowerCase() === address.toLowerCase()
   );
+
+  const isCreator = address && event.creator_address &&
+    address.toLowerCase() === event.creator_address.toLowerCase();
+
+  // Calculate quorum percentage
+  const quorumPercent = event.participants.length > 0
+    ? (event.voting.total / event.participants.length) * 100
+    : 0;
+  const quorumMet = quorumPercent >= 51;
 
   const winners = event.participants.filter((p) => p.status === "winner");
 
@@ -136,7 +148,12 @@ export default function VotingConsolePage() {
               <span className="bp-badge bp-badge-active" style={{ fontSize: "0.5rem" }}>
                 RANK {index + 1}
               </span>
-              <span style={{ wordBreak: "break-all" }}>{p.wallet_address}</span>
+              <span>
+                <span style={{ color: "var(--bp-green)" }}>{generateGamerTag(p.wallet_address)}</span>
+                <span className="bp-text-muted" style={{ fontSize: "0.35rem", marginLeft: "6px" }}>
+                  {p.wallet_address.slice(0, 10)}...{p.wallet_address.slice(-8)}
+                </span>
+              </span>
             </li>
           ))}
           {winners.length === 0 && (
@@ -161,6 +178,11 @@ export default function VotingConsolePage() {
       {/* Voting panel (Active only during voting phase) */}
       {event.status === "voting" ? (
         <div>
+          {/* Minority Penalty Warning Banner */}
+          <div className="bp-penalty-warning">
+            ■ WARNING: MEMILIH DI MINORITAS AKAN MENGURANGI 10 HP REPUTASI ANDA ■
+          </div>
+
           {!isParticipant ? (
             <div className="bp-card bp-text-center bp-text-accent bp-mb-lg" style={{ borderColor: "var(--bp-accent)" }}>
               AUDITING MODE ONLY
@@ -183,6 +205,39 @@ export default function VotingConsolePage() {
                 onClick={() => handleVote(false)}
               >
                 ■ REJECT (REFUND)
+              </button>
+            </div>
+          )}
+
+          {/* Distribute Prize Button — Creator only, quorum met */}
+          {isCreator && quorumMet && (
+            <div className="bp-card bp-mb-lg" style={{ borderColor: "var(--bp-green)", background: "rgba(57,255,20,0.05)" }}>
+              <p className="bp-text-xs bp-text-muted bp-mb-md">
+                Kuorum voting tercapai ({quorumPercent.toFixed(1)}%). Anda dapat mendistribusikan hadiah sekarang.
+              </p>
+              <button
+                className="bp-btn-distribute"
+                disabled={distributing}
+                onClick={async () => {
+                  setDistributing(true);
+                  try {
+                    const res = await fetch(`${API_BASE_URL}/events/${event.id}/distribute`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ creator_address: address }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || "Gagal mendistribusikan hadiah");
+                    alert("Hadiah berhasil didistribusikan!");
+                    fetchEventDetail();
+                  } catch (err: any) {
+                    alert(`Error: ${err.message}`);
+                  } finally {
+                    setDistributing(false);
+                  }
+                }}
+              >
+                {distributing ? "■ DISTRIBUTING... ■" : "■ DISTRIBUTE PRIZE ■"}
               </button>
             </div>
           )}

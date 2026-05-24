@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
 import Link from "next/link";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import ConnectButtonClient from "./components/ConnectButtonClient";
 
 export const metadata: Metadata = {
   title: "bitPatch | 8-Bit Web3 Tournaments on Celo",
@@ -32,7 +32,7 @@ export default function RootLayout({
                 </Link>
               </nav>
               <div>
-                <ConnectButton showBalance={false} chainStatus="none" accountStatus="avatar" />
+                <ConnectButtonClient />
               </div>
             </div>
           </header>
