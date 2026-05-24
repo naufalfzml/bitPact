@@ -38,8 +38,8 @@ router.post("/", async (req, res) => {
     if (!["1v1", "team", "ffa"].includes(game_mode)) {
       return res.status(400).json({ error: "game_mode must be '1v1', 'team', or 'ffa'" });
     }
-    if (!["public", "password", "invite_only"].includes(access_type)) {
-      return res.status(400).json({ error: "access_type must be 'public', 'password', or 'invite_only'" });
+    if (!["password", "invite_only"].includes(access_type)) {
+      return res.status(400).json({ error: "access_type must be 'password' or 'invite_only'" });
     }
 
     // Hash password if access_type is password

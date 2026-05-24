@@ -17,9 +17,16 @@ export default function CreateEventPage() {
   const [consensusThreshold, setConsensusThreshold] = useState(51);
 
   // Private Events state
-  const [accessType, setAccessType] = useState<"public" | "password" | "invite_only">("public");
+  const [accessType, setAccessType] = useState<"password" | "invite_only">("password");
   const [eventPassword, setEventPassword] = useState("");
   const [whitelistInput, setWhitelistInput] = useState("");
+  const [whitelistAddresses, setWhitelistAddresses] = useState<string[]>([]);
+
+  // Social Connect lookup state
+  const [socialSearchInput, setSocialSearchInput] = useState("");
+  const [socialSearchStatus, setSocialSearchStatus] = useState<"idle" | "loading" | "resolved" | "not_resolved">("idle");
+  const [socialResolvedAddr, setSocialResolvedAddr] = useState<string | null>(null);
+  const [showManualFallback, setShowManualFallback] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,9 +49,9 @@ export default function CreateEventPage() {
     setLoading(true);
     setError(null);
 
-    // Parse whitelist addresses from comma-separated input
-    const whitelist = accessType === "invite_only"
-      ? whitelistInput.split(",").map((s) => s.trim()).filter(Boolean)
+    // Use collected whitelist addresses for invite-only events
+    const whitelist = accessType === "invite_only" && whitelistAddresses.length > 0
+      ? whitelistAddresses
       : undefined;
 
     try {
@@ -168,7 +175,6 @@ export default function CreateEventPage() {
               onChange={(e) => setAccessType(e.target.value as any)}
               disabled={loading}
             >
-              <option value="public">■ PUBLIC — Open to Everyone</option>
               <option value="password">■ PRIVATE: PASSWORD — Room Code Required</option>
               <option value="invite_only">■ PRIVATE: INVITE ONLY — Whitelist Only</option>
             </select>
@@ -197,24 +203,148 @@ export default function CreateEventPage() {
           {/* Whitelist Builder (only if Invite-Only access) */}
           {accessType === "invite_only" && (
             <div className="bp-field">
-              <label className="bp-label">Invite Wallet Addresses</label>
-              <textarea
-                className="bp-input"
-                placeholder={"0xAddress1, 0xAddress2, 0xAddress3..."}
-                value={whitelistInput}
-                onChange={(e) => setWhitelistInput(e.target.value)}
-                disabled={loading}
-                rows={4}
-                style={{
-                  resize: "vertical",
-                  fontFamily: "var(--bp-font)",
-                  fontSize: "0.5rem",
-                  lineHeight: "1.6",
-                }}
-              />
-              <p className="bp-text-xs bp-text-muted" style={{ marginTop: "4px" }}>
-                Comma-separated wallet addresses. You can also add more invitees later from the event detail page.
-              </p>
+              <label className="bp-label">■ INVITE PLAYERS ■</label>
+
+              {/* Social Connect Lookup */}
+              <div style={{ padding: "12px", border: "1px solid var(--bp-cyan)", background: "rgba(0,255,255,0.05)", marginBottom: "12px" }}>
+                <p className="bp-text-xs" style={{ color: "var(--bp-cyan)", marginBottom: "8px" }}>
+                  ■ MASUKKAN EMAIL / NO. TELEPON PESERTA ■
+                </p>
+                <div className="bp-flex bp-gap-sm" style={{ alignItems: "flex-end" }}>
+                  <input
+                    type="text"
+                    className="bp-input bp-text-xs"
+                    placeholder="email@contoh.com atau +628..."
+                    value={socialSearchInput}
+                    onChange={(e) => {
+                      setSocialSearchInput(e.target.value);
+                      setSocialSearchStatus("idle");
+                      setSocialResolvedAddr(null);
+                      setShowManualFallback(false);
+                    }}
+                    disabled={loading || socialSearchStatus === "loading"}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="bp-btn bp-btn-accent bp-text-xs"
+                    disabled={loading || socialSearchStatus === "loading" || !socialSearchInput.trim()}
+                    onClick={async () => {
+                      setSocialSearchStatus("loading");
+                      setSocialResolvedAddr(null);
+                      setShowManualFallback(false);
+                      try {
+                        const res = await fetch(`${API_BASE_URL}/social-connect/lookup`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ identifier: socialSearchInput.trim() }),
+                        });
+                        const data = await res.json();
+                        if (data.status === "RESOLVED" && data.address) {
+                          setSocialSearchStatus("resolved");
+                          setSocialResolvedAddr(data.address);
+                          // Auto-add to whitelist
+                          const addr = data.address.toLowerCase();
+                          if (!whitelistAddresses.includes(addr)) {
+                            setWhitelistAddresses((prev) => [...prev, addr]);
+                          }
+                          setSocialSearchInput("");
+                        } else {
+                          setSocialSearchStatus("not_resolved");
+                        }
+                      } catch {
+                        setSocialSearchStatus("not_resolved");
+                      }
+                    }}
+                    style={{ whiteSpace: "nowrap" }}
+                  >
+                    {socialSearchStatus === "loading" ? "■ MENGHUBUNGI DECENTRALIZED IDENTITY NETWORK... ■" : "■ CARI DAN UNDANG ■"}
+                  </button>
+                </div>
+
+                {/* Lookup result: resolved */}
+                {socialSearchStatus === "resolved" && socialResolvedAddr && (
+                  <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-green)", background: "rgba(0,255,0,0.05)" }}>
+                    <p className="bp-text-xs bp-text-green">
+                      ■ DITEMUKAN: {socialResolvedAddr.slice(0, 14)}...{socialResolvedAddr.slice(-8)} — otomatis ditambahkan ke whitelist
+                    </p>
+                  </div>
+                )}
+
+                {/* Lookup result: not resolved */}
+                {socialSearchStatus === "not_resolved" && (
+                  <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
+                    <p className="bp-text-xs bp-text-red" style={{ marginBottom: "6px" }}>
+                      ■ IDENTITAS TIDAK TERDAFTAR DI CELO SOCIAL CONNECT ■
+                    </p>
+                    <button
+                      type="button"
+                      className="bp-btn bp-btn-accent bp-text-xs bp-w-full"
+                      onClick={() => {
+                        setShowManualFallback(true);
+                        setSocialSearchStatus("idle");
+                      }}
+                    >
+                      ■ MASUKKAN SECARA MANUAL ■
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Manual wallet input fallback */}
+              {showManualFallback && (
+                <div style={{ padding: "12px", border: "1px solid var(--bp-accent)", background: "rgba(255,193,7,0.05)", marginBottom: "12px" }}>
+                  <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "8px" }}>Masukkan alamat wallet secara manual:</p>
+                  <div className="bp-flex bp-gap-sm" style={{ alignItems: "flex-end" }}>
+                    <input
+                      type="text"
+                      className="bp-input bp-text-xs"
+                      placeholder="0xABC...DEF"
+                      value={whitelistInput}
+                      onChange={(e) => setWhitelistInput(e.target.value)}
+                      disabled={loading}
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      className="bp-btn bp-btn-accent bp-text-xs"
+                      disabled={loading || !whitelistInput.trim()}
+                      onClick={() => {
+                        const addr = whitelistInput.trim().toLowerCase();
+                        if (addr && !whitelistAddresses.includes(addr)) {
+                          setWhitelistAddresses((prev) => [...prev, addr]);
+                        }
+                        setWhitelistInput("");
+                      }}
+                      style={{ whiteSpace: "nowrap" }}
+                    >
+                      [ ADD ]
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Whitelist roster preview */}
+              {whitelistAddresses.length > 0 && (
+                <div style={{ padding: "8px", border: "1px solid var(--bp-border)", marginTop: "8px" }}>
+                  <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "4px" }}>■ DAFTAR UNDANGAN ({whitelistAddresses.length}):</p>
+                  {whitelistAddresses.map((addr, i) => (
+                    <div key={i} className="bp-flex bp-justify-between bp-items-center" style={{ padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                      <span className="bp-text-xs bp-text-green" style={{ fontFamily: "var(--bp-font)" }}>
+                        {addr.slice(0, 14)}...{addr.slice(-8)}
+                      </span>
+                      <button
+                        type="button"
+                        className="bp-text-xs bp-text-red"
+                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--bp-font)" }}
+                        onClick={() => setWhitelistAddresses((prev) => prev.filter((_, idx) => idx !== i))}
+                      >
+                        [ DEL ]
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

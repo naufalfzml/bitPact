@@ -7,8 +7,8 @@ const router = express.Router();
 //  POST /api/social-connect/lookup
 //
 //  Resolves a social identifier (email or phone)
-//  to a Celo wallet 0x address via Social Connect
-//  (ODIS) mock database.
+//  to a Celo wallet 0x address via native ODIS
+//  protocol with Supabase caching layer.
 //
 //  Body: { "identifier": "+6281234567890" }
 //  Response: { "status": "RESOLVED", "address": "0x..." }

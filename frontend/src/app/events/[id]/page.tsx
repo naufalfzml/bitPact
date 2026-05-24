@@ -34,7 +34,7 @@ interface EventDetail {
   status: "setup" | "active" | "voting" | "ended" | "disputed";
   creator_address: string;
   created_at: string;
-  access_type: "public" | "password" | "invite_only";
+  access_type: "password" | "invite_only";
   participants: Participant[];
   brackets: BracketMatch[];
   voting: {
@@ -115,21 +115,9 @@ export default function EventDetailPage() {
     }
   }, [id]);
 
-  if (loading) {
-    return <div className="bp-text-center bp-blink bp-text-primary" style={{ padding: "80px 0" }}>LOADING_DASHBOARD_PANEL...</div>;
-  }
-
-  if (!event) {
-    return (
-      <div className="bp-card bp-text-center bp-text-red" style={{ borderColor: "var(--bp-red)", padding: "48px 0" }}>
-        ERROR: TOURNAMENT NOT FOUND
-      </div>
-    );
-  }
-
-  const isCreator = address && address.toLowerCase() === event.creator_address.toLowerCase();
-  const isRegistered = address && event.participants.some(p => p.wallet_address.toLowerCase() === address.toLowerCase());
-  const myParticipantObj = address ? event.participants.find(p => p.wallet_address.toLowerCase() === address.toLowerCase()) : null;
+  const isCreator = !!(address && event && address.toLowerCase() === event.creator_address.toLowerCase());
+  const isRegistered = !!(address && event && event.participants.some(p => p.wallet_address.toLowerCase() === address.toLowerCase()));
+  const myParticipantObj = (address && event) ? event.participants.find(p => p.wallet_address.toLowerCase() === address.toLowerCase()) : null;
 
   // Check whitelist status for invite-only events
   React.useEffect(() => {
@@ -152,6 +140,18 @@ export default function EventDetailPage() {
       })();
     }
   }, [event, address, isCreator, isRegistered, whitelistChecked]);
+
+  if (loading) {
+    return <div className="bp-text-center bp-blink bp-text-primary" style={{ padding: "80px 0" }}>LOADING_DASHBOARD_PANEL...</div>;
+  }
+
+  if (!event) {
+    return (
+      <div className="bp-card bp-text-center bp-text-red" style={{ borderColor: "var(--bp-red)", padding: "48px 0" }}>
+        ERROR: TOURNAMENT NOT FOUND
+      </div>
+    );
+  }
 
   // ── Registration Flow ──
   const handleRegister = async (passwordOverride?: string) => {
@@ -636,14 +636,80 @@ export default function EventDetailPage() {
           <div className="bp-card">
             <h3 className="bp-card-title">■ Registered Roster ■</h3>
 
-            {/* Whitelist Management — Creator Only, Invite-Only, Setup Phase */}
+            {/* Whitelist Management + Social Connect — Creator Only, Invite-Only, Setup Phase */}
             {isCreator && event.status === "setup" && event.access_type === "invite_only" && (
               <div style={{ marginBottom: "16px", padding: "12px", border: "1px solid var(--bp-cyan)", background: "rgba(0,255,255,0.05)" }}>
                 <p className="bp-text-xs" style={{ color: "var(--bp-cyan)", marginBottom: "8px" }}>
                   ■ WHITELIST MANAGEMENT ■
                 </p>
 
+                {/* Social Connect Lookup */}
+                <div style={{ marginBottom: "12px", padding: "10px", border: "1px solid var(--bp-accent)", background: "rgba(0,0,0,0.3)" }}>
+                  <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "8px" }}>
+                    ■ MASUKKAN EMAIL / NO. TELEPON PESERTA ■
+                  </p>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    handleSocialLookup(e);
+                  }} className="bp-flex bp-gap-sm" style={{ alignItems: "flex-end" }}>
+                    <input
+                      type="text"
+                      className="bp-input bp-text-xs"
+                      placeholder="email@contoh.com atau +628..."
+                      value={socialInput}
+                      onChange={(e) => {
+                        setSocialInput(e.target.value);
+                        setSocialLookupStatus("idle");
+                        setResolvedAddress(null);
+                      }}
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      type="submit"
+                      className="bp-btn bp-btn-accent bp-text-xs"
+                      disabled={socialLookupStatus === "loading" || !socialInput.trim()}
+                      style={{ whiteSpace: "nowrap" }}
+                    >
+                      {socialLookupStatus === "loading" ? "■ MENGHUBUNGI DECENTRALIZED IDENTITY NETWORK... ■" : "■ CARI DAN UNDANG ■"}
+                    </button>
+                  </form>
+
+                  {/* Lookup Result: Resolved — auto-add to whitelist */}
+                  {socialLookupStatus === "resolved" && resolvedAddress && (
+                    <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-green)", background: "rgba(0,255,0,0.05)" }}>
+                      <p className="bp-text-xs bp-text-green" style={{ marginBottom: "4px" }}>
+                        ■ DITEMUKAN: {resolvedAddress.slice(0, 14)}...{resolvedAddress.slice(-8)}
+                      </p>
+                      <button
+                        className="bp-btn bp-btn-green bp-text-xs bp-w-full"
+                        onClick={() => {
+                          handleAddToWhitelist(resolvedAddress);
+                          setSocialInput("");
+                          setSocialLookupStatus("idle");
+                          setResolvedAddress(null);
+                        }}
+                        disabled={addingToWhitelist}
+                      >
+                        {addingToWhitelist ? "MENAMBAHKAN..." : "■ TAMBAHKAN KE WHITELIST ■"}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Lookup Result: Not Found */}
+                  {socialLookupStatus === "not_resolved" && (
+                    <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
+                      <p className="bp-text-xs bp-text-red">
+                        ■ IDENTITAS TIDAK TERDAFTAR DI CELO SOCIAL CONNECT ■
+                      </p>
+                      <p className="bp-text-xs bp-text-muted" style={{ marginTop: "4px" }}>
+                        Gunakan input manual di bawah untuk memasukkan alamat wallet secara langsung.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 {/* Manual wallet address input */}
+                <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "6px" }}>Atau masukkan alamat wallet secara manual:</p>
                 <div className="bp-flex bp-gap-sm bp-mb-sm" style={{ alignItems: "flex-end" }}>
                   <input
                     type="text"
@@ -662,67 +728,6 @@ export default function EventDetailPage() {
                     {addingToWhitelist ? "ADDING..." : "[ ADD ]"}
                   </button>
                 </div>
-              </div>
-            )}
-
-            {/* Social Connect Invite — Creator Only, Setup Phase */}
-            {isCreator && event.status === "setup" && (
-              <div style={{ marginBottom: "16px", padding: "12px", border: "1px solid var(--bp-accent)", background: "rgba(0,0,0,0.3)" }}>
-                <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "8px" }}>
-                  [ SOCIAL CONNECT ] Invite players by email or phone number:
-                </p>
-                <form onSubmit={handleSocialLookup} className="bp-flex bp-gap-sm" style={{ alignItems: "flex-end" }}>
-                  <input
-                    type="text"
-                    className="bp-input bp-text-xs"
-                    placeholder="email or phone (e.g. +628...)"
-                    value={socialInput}
-                    onChange={(e) => {
-                      setSocialInput(e.target.value);
-                      setSocialLookupStatus("idle");
-                      setResolvedAddress(null);
-                    }}
-                    style={{ flex: 1 }}
-                  />
-                  <button
-                    type="submit"
-                    className="bp-btn bp-btn-accent bp-text-xs"
-                    disabled={socialLookupStatus === "loading" || !socialInput.trim()}
-                    style={{ whiteSpace: "nowrap" }}
-                  >
-                    {socialLookupStatus === "loading" ? "SEARCHING..." : "[ SEARCH ]"}
-                  </button>
-                </form>
-
-                {/* Lookup Result */}
-                {socialLookupStatus === "resolved" && resolvedAddress && (
-                  <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-green)", background: "rgba(0,255,0,0.05)" }}>
-                    <p className="bp-text-xs bp-text-green" style={{ marginBottom: "4px" }}>
-                      ■ RESOLVED: {resolvedAddress.slice(0, 14)}...{resolvedAddress.slice(-8)}
-                    </p>
-                    <button
-                      className="bp-btn bp-btn-green bp-text-xs bp-w-full"
-                      onClick={() => {
-                        if (event.access_type === "invite_only") {
-                          handleAddToWhitelist(resolvedAddress);
-                        } else {
-                          handleAddResolvedPlayer();
-                        }
-                      }}
-                      disabled={addingViaLookup || addingToWhitelist}
-                    >
-                      {(addingViaLookup || addingToWhitelist) ? "ADDING..." : event.access_type === "invite_only" ? "[ ADD TO WHITELIST ]" : "[ ADD TO ROSTER ]"}
-                    </button>
-                  </div>
-                )}
-
-                {socialLookupStatus === "not_resolved" && (
-                  <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
-                    <p className="bp-text-xs bp-text-red">
-                      ■ NOT FOUND — Identity not registered in Social Connect. Try a wallet address instead.
-                    </p>
-                  </div>
-                )}
               </div>
             )}
 
