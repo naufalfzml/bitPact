@@ -39,7 +39,7 @@ function startAutoAbstainCron() {
 
         // Resolve consensus with only the votes that were cast
         // Non-voters are treated as abstaining (not counted)
-        await resolveConsensus(event.id);
+        await resolveConsensus(event.id, true);
 
         console.log(`[CRON] Event ${event.id} resolved.`);
       }

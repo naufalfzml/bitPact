@@ -5,6 +5,8 @@ const assert = require("node:assert/strict");
 const http = require("node:http");
 const express = require("express");
 const cors = require("cors");
+const eventsRouter = require("../routes/events");
+const { getStartBracketGuardError } = eventsRouter;
 
 // Smoke-test the REAL Express routers (mounted exactly like index.js) without
 // starting the cron scheduler or binding a fixed port. We only hit endpoints
@@ -18,7 +20,7 @@ before(async () => {
   const app = express();
   app.use(cors());
   app.use(express.json());
-  app.use("/api/events", require("../routes/events"));
+  app.use("/api/events", eventsRouter);
   app.use("/api/reputation", require("../routes/reputation"));
   app.use("/api/social-connect", require("../routes/socialConnect"));
   app.get("/api/health", (_req, res) =>
@@ -109,18 +111,16 @@ test("register without wallet_address/tx_hash => 400", async () => {
   assert.match((await res.json()).error, /Missing wallet_address or tx_hash/);
 });
 
-test("vote without voter_address / boolean is_valid => 400", async () => {
+test("vote input guards reject missing voter_address and non-boolean is_valid", async () => {
   const res = await post("/api/events/some-id/vote", { voter_address: "0xabc" });
   assert.equal(res.status, 400);
   assert.match((await res.json()).error, /is_valid/);
-});
 
-test("vote with non-boolean is_valid => 400", async () => {
-  const res = await post("/api/events/some-id/vote", {
+  const invalidTypeRes = await post("/api/events/some-id/vote", {
     voter_address: "0xabc",
     is_valid: "yes",
   });
-  assert.equal(res.status, 400);
+  assert.equal(invalidTypeRes.status, 400);
 });
 
 test("select-game-mode with invalid mode => 400", async () => {
@@ -130,6 +130,14 @@ test("select-game-mode with invalid mode => 400", async () => {
   });
   assert.equal(res.status, 400);
   assert.match((await res.json()).error, /game_mode/);
+});
+
+test("start bracket guard allows ffa without brackets but blocks 1v1", () => {
+  assert.equal(getStartBracketGuardError({ game_mode: "ffa" }, []), null);
+  assert.match(
+    getStartBracketGuardError({ game_mode: "1v1" }, []),
+    /Draf bagan pertandingan belum di-generate/
+  );
 });
 
 test("draft-bracket with non-array matches => 400", async () => {

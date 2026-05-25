@@ -604,7 +604,7 @@ router.post("/:id/select-game-mode", async (req, res) => {
 
     const count = participants?.length ?? 0;
     if (count < 2) {
-      return res.status(400).json({ error: "Minimal 2 peserta terdaftar untuk menghasilkan bagan draf" });
+      return res.status(400).json({ error: "Minimal 2 peserta terdaftar untuk memilih mode pertandingan" });
     }
 
     // Update event table with the real game_mode and team_size
@@ -658,7 +658,9 @@ router.post("/:id/select-game-mode", async (req, res) => {
     }
 
     res.json({
-      message: "Game mode selected, blank draft brackets generated",
+      message: bracketInserts.length > 0
+        ? "Game mode selected, blank draft brackets generated"
+        : "Game mode selected successfully",
       game_mode,
       participant_count: count,
       matches_count: bracketInserts.length
@@ -867,20 +869,9 @@ router.post("/:id/start", async (req, res) => {
       .eq("event_id", id)
       .eq("round", 1);
 
-    if (!brackets || brackets.length === 0) {
-      return res.status(400).json({ error: "Draf bagan pertandingan belum di-generate" });
-    }
-
-    // 1v1 Bracket Validation
-    if (event.game_mode === "1v1") {
-      // Validate that all slots are filled
-      for (const match of brackets) {
-        if (!match.player_a || !match.player_b) {
-          return res.status(400).json({
-            error: `Pertandingan ${match.match_index + 1} masih memiliki slot kosong. Lengkapi draf bagan terlebih dahulu.`
-          });
-        }
-      }
+    const startBracketGuardError = getStartBracketGuardError(event, brackets);
+    if (startBracketGuardError) {
+      return res.status(400).json({ error: startBracketGuardError });
     }
 
     // Team mode setup
@@ -1394,10 +1385,27 @@ function authorizeRetrySettlement(event, callerAddress, adminAddress) {
   return { ok: true };
 }
 
+function getStartBracketGuardError(event, brackets) {
+  if (event.game_mode === "ffa") return null;
+  if (!brackets || brackets.length === 0) {
+    return "Draf bagan pertandingan belum di-generate";
+  }
+
+  if (event.game_mode === "1v1") {
+    for (const match of brackets) {
+      if (!match.player_a || !match.player_b) {
+        return `Pertandingan ${match.match_index + 1} masih memiliki slot kosong. Lengkapi draf bagan terlebih dahulu.`;
+      }
+    }
+  }
+
+  return null;
+}
+
 // ──────────────────────────────────────────────
 //  Consensus Resolution Helper
 // ──────────────────────────────────────────────
-async function resolveConsensus(eventId) {
+async function resolveConsensus(eventId, isTimeout = false) {
   const { data: event } = await supabase
     .from("events")
     .select("*")
@@ -1411,7 +1419,11 @@ async function resolveConsensus(eventId) {
     .select("*")
     .eq("event_id", eventId);
 
-  if (!votes || votes.length === 0) return;
+  if (!votes || votes.length === 0) {
+    if (!isTimeout) return;
+    await settleEvent(event, { isDistribute: false });
+    return;
+  }
 
   const agreeCount = votes.filter((v) => v.is_valid).length;
   const rejectCount = votes.length - agreeCount;
@@ -1573,3 +1585,4 @@ module.exports = router;
 module.exports.resolveConsensus = resolveConsensus;
 module.exports.settleEvent = settleEvent;
 module.exports.authorizeRetrySettlement = authorizeRetrySettlement;
+module.exports.getStartBracketGuardError = getStartBracketGuardError;

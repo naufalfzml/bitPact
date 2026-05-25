@@ -48,6 +48,8 @@ interface EventDetail {
   };
 }
 
+type SelectableGameMode = "1v1" | "team" | "ffa";
+
 export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -73,7 +75,7 @@ export default function EventDetailPage() {
   const [appealWinners, setAppealWinners] = useState("");
 
   // Bracket Drafting states
-  const [selectedGameMode, setSelectedGameMode] = useState<"1v1" | "team">("1v1");
+  const [selectedGameMode, setSelectedGameMode] = useState<SelectableGameMode>("1v1");
   const [isGeneratingBracket, setIsGeneratingBracket] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isStartingEvent, setIsStartingEvent] = useState(false);
@@ -289,24 +291,42 @@ export default function EventDetailPage() {
   };
 
   // ── Creator Control Flow ──
+  const persistSelectedGameMode = async (gameMode: SelectableGameMode) => {
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
+    const res = await fetch(`${API_BASE_URL}/events/${event.id}/select-game-mode`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        creator_address: address,
+        game_mode: gameMode,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Gagal memilih mode pertandingan");
+    return data;
+  };
+
   const handleGenerateBracketDraft = async () => {
     if (!event) return;
     setIsGeneratingBracket(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/events/${event.id}/select-game-mode`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          creator_address: address,
-          game_mode: selectedGameMode,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal men-generate draf");
-      alert("Format terpilih! Draf bagan kosong berhasil dibuat.");
+      await persistSelectedGameMode(selectedGameMode);
+      if (selectedGameMode === "ffa") {
+        const startRes = await fetch(`${API_BASE_URL}/events/${event.id}/start`, {
+          method: "POST",
+        });
+        const startData = await startRes.json();
+        if (!startRes.ok) throw new Error(startData.error || "Gagal memulai turnamen FFA");
+        alert("■ TURNAMEN FFA RESMI DIMULAI ■");
+      } else {
+        alert("Format terpilih! Draf bagan kosong berhasil dibuat.");
+      }
       fetchEventDetail();
     } catch (err: any) {
-      alert(`Generate Error: ${err.message}`);
+      alert(`${selectedGameMode === "ffa" ? "Start Error" : "Generate Error"}: ${err.message}`);
     } finally {
       setIsGeneratingBracket(false);
     }
@@ -1067,19 +1087,22 @@ export default function EventDetailPage() {
                           className="bp-select"
                           style={{ appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }}
                           value={selectedGameMode}
-                          onChange={(e) => setSelectedGameMode(e.target.value as any)}
-                          disabled={isGeneratingBracket}
+                          onChange={(e) => setSelectedGameMode(e.target.value as SelectableGameMode)}
+                          disabled={isGeneratingBracket || isStartingEvent}
                         >
                           <option value="1v1">■ 1v1 PvP Tournament Bracket</option>
                           <option value="team">■ Team vs Team Showdown (2v2/Custom)</option>
+                          <option value="ffa">■ Free For All Showdown</option>
                         </select>
                       </div>
                       <button
                         className="bp-btn bp-btn-primary bp-w-full bp-mt-md"
-                        disabled={isGeneratingBracket}
+                        disabled={isGeneratingBracket || isStartingEvent}
                         onClick={handleGenerateBracketDraft}
                       >
-                        {isGeneratingBracket ? "GENERATING..." : "■ GENERATE BRACKET DRAFT ■"}
+                        {isGeneratingBracket
+                          ? (selectedGameMode === "ffa" ? "STARTING..." : "GENERATING...")
+                          : (selectedGameMode === "ffa" ? "■ START FFA EVENT ■" : "■ GENERATE BRACKET DRAFT ■")}
                       </button>
                     </div>
                   ) : (

@@ -8,8 +8,10 @@ const assert = require("node:assert/strict");
 // so it doubles as executable documentation of the consensus rules and a
 // regression guard against accidental threshold changes.
 
-function resolveDecision(votes, consensusThreshold = 51) {
-  if (!votes || votes.length === 0) return { action: "none" }; // <-- stuck if nobody votes
+function resolveDecision(votes, consensusThreshold = 51, isTimeout = false) {
+  if (!votes || votes.length === 0) {
+    return { action: isTimeout ? "refund" : "none" };
+  }
   const agree = votes.filter((v) => v.is_valid).length;
   const reject = votes.length - agree;
   const agreePercent = (agree / votes.length) * 100;
@@ -99,6 +101,7 @@ test("turnout quorum needs >= 51% of participants to have voted", () => {
 //  locked. Documents a gap vs the "non-voters = abstain" spec.
 // ──────────────────────────────────────────────
 
-test("EDGE: zero votes => no resolution (event can get stuck)", () => {
+test("EDGE: zero votes => no action before timeout, refund on timeout", () => {
   assert.equal(resolveDecision([]).action, "none");
+  assert.equal(resolveDecision([], 51, true).action, "refund");
 });
