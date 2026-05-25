@@ -85,20 +85,41 @@ test("robust alternative: per-ticket BigInt multiplication is exact by design", 
 });
 
 // ──────────────────────────────────────────────
-//  BUG #2 — phantom participant (Social Connect invite without deposit)
-//  DB has 4 participant rows but only 3 deposited on-chain. Backend pool is
-//  computed from the DB count (4) and overshoots the real pool (3).
+//  FIX (F1) — shares derived from the ON-CHAIN pool, not the DB row count.
+//  resolveConsensus/settleEvent now reads prizePool via getEventInfo, so a
+//  phantom DB participant (4 rows, only 3 deposits) cannot inflate the pool:
+//  shares are split from the real on-chain pool and always sum to it, so
+//  distributePrize never reverts with SharesMismatch.
 // ──────────────────────────────────────────────
 
-test("BUG: phantom DB participant inflates pool above real deposits", () => {
+// Mirror of settleEvent()'s share math (routes/events.js).
+function sharesFromOnChainPool(prizePool, winnerCount) {
+  const sharePerWinner = prizePool / BigInt(winnerCount);
+  const shares = Array.from({ length: winnerCount }, () => sharePerWinner);
+  const sumShares = shares.reduce((a, b) => a + b, 0n);
+  if (sumShares < prizePool) {
+    shares[shares.length - 1] += prizePool - sumShares;
+  }
+  return shares;
+}
+
+test("F1: shares derived from on-chain pool ignore phantom DB participants", () => {
   const ticketPrice = 5;
-  const dbCount = 4; // 3 real depositors + 1 social-connect invite
-  const depositors = 3;
+  const depositors = 3; // real on-chain deposits; DB has 4 rows (1 phantom)
 
-  const backend = backendComputedPool(ticketPrice, dbCount);
-  const real = onChainPool(ticketPrice, depositors);
+  // The pool is read from on-chain state, NOT from the (inflated) DB count.
+  const pool = onChainPool(ticketPrice, depositors);
+  const shares = sharesFromOnChainPool(pool, 2); // 2 winners
+  const sum = shares.reduce((a, b) => a + b, 0n);
 
-  assert.equal(backend, parseUnits("20", USDC_DECIMALS));
-  assert.equal(real, parseUnits("15", USDC_DECIMALS));
-  assert.ok(backend > real, "backend would request more than the vault holds -> revert");
+  assert.equal(pool, parseUnits("15", USDC_DECIMALS));
+  assert.equal(sum, pool, "sum(shares) must equal the on-chain pool -> no SharesMismatch");
+});
+
+test("F1: sum(shares) === on-chain pool across winner counts and remainders", () => {
+  const pool = onChainPool(5, 4); // 20 USDC held on-chain
+  for (let winners = 1; winners <= 4; winners++) {
+    const sum = sharesFromOnChainPool(pool, winners).reduce((a, b) => a + b, 0n);
+    assert.equal(sum, pool, `divergence with ${winners} winners`);
+  }
 });

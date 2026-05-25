@@ -102,7 +102,6 @@ export default function EventDetailPage() {
   // Whitelist management (creator, invite-only)
   const [whitelistManualAddr, setWhitelistManualAddr] = useState("");
   const [addingToWhitelist, setAddingToWhitelist] = useState(false);
-  const [addingViaLookup, setAddingViaLookup] = useState(false);
 
   const fetchEventDetail = async () => {
     try {
@@ -574,36 +573,8 @@ export default function EventDetailPage() {
     }
   };
 
-  const handleAddResolvedPlayer = async () => {
-    if (!resolvedAddress || !event) return;
-    setAddingViaLookup(true);
-    try {
-      // Register the resolved wallet address directly into the database roster
-      const res = await fetch(`${API_BASE_URL}/events/${event.id}/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          wallet_address: resolvedAddress,
-          tx_hash: "social-connect-invite", // Placeholder — on-chain deposit handled separately by the invited player
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Failed to add player");
-      }
-
-      alert(`Player ${resolvedAddress.slice(0, 10)}... added to roster!`);
-      setSocialInput("");
-      setSocialLookupStatus("idle");
-      setResolvedAddress(null);
-      fetchEventDetail();
-    } catch (err: any) {
-      alert(`Add Player Error: ${err.message}`);
-    } finally {
-      setAddingViaLookup(false);
-    }
-  };
+  // Social Connect invites only populate the whitelist (handleAddToWhitelist);
+  // invited players must register + deposit on-chain to join the roster.
 
   return (
     <div>

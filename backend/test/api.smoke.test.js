@@ -167,6 +167,12 @@ test("remove-participant without fields => 400", async () => {
   assert.equal(res.status, 400);
 });
 
+test("retry-settlement without caller_address => 400", async () => {
+  const res = await post("/api/events/some-id/retry-settlement", {});
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).error, /caller_address/);
+});
+
 test("whitelist check without ?wallet => 400", async () => {
   const res = await fetch(`${baseUrl}/api/events/some-id/whitelist/check`);
   assert.equal(res.status, 400);

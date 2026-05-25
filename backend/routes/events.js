@@ -4,6 +4,7 @@ const { supabase } = require("../lib/supabase");
 const {
   publicClient,
   walletClient,
+  adminAccount,
   VAULT_ABI,
   uuidToBytes32,
   parseEther,
@@ -302,16 +303,11 @@ router.post("/:id/register", async (req, res) => {
     let blockscoutCheckAttempted = false;
     let isRegisteredInContract = false;
 
-    // Check if this is a Social Connect invite bypass
-    if (tx_hash === "social-connect-invite") {
-      isTxSuccess = true;
-      isBlockscoutVerified = true;
-      isRegisteredInContract = true;
-      console.log("Bypassing on-chain transaction receipt check for Social Connect invite.");
-    }
+    // On-chain verification is mandatory for EVERY registration: no participant
+    // row is created without a verified deposit (escrow-payout-integrity / F3).
 
     // 1. Blockscout API Verification
-    if (tx_hash !== "social-connect-invite") {
+    {
       try {
         const blockscoutApi = getBlockscoutApiUrl();
         const blockscoutUrl = `${blockscoutApi}?module=proxy&action=eth_getTransactionReceipt&txhash=${tx_hash}`;
@@ -348,7 +344,7 @@ router.post("/:id/register", async (req, res) => {
     }
 
     // 2. Direct On-Chain RPC Verification (Fallback or double-check)
-    if (tx_hash !== "social-connect-invite" && !isBlockscoutVerified) {
+    if (!isBlockscoutVerified) {
       try {
         console.log("Validating transaction via public RPC node...");
         const receipt = await publicClient.getTransactionReceipt({ hash: tx_hash });
@@ -388,7 +384,7 @@ router.post("/:id/register", async (req, res) => {
     }
 
     // 3. Contract State Verification: Double-check 'isParticipant' view function on the Vault
-    if (tx_hash !== "social-connect-invite") {
+    {
       try {
         const eventIdBytes32 = uuidToBytes32(id);
         isRegisteredInContract = await publicClient.readContract({
@@ -1274,6 +1270,131 @@ router.post("/:id/appeal", async (req, res) => {
 });
 
 // ──────────────────────────────────────────────
+//  Settlement Helper (escrow-payout-integrity / F1 + F2)
+//
+//  Reads the REAL prize pool from on-chain state (getEventInfo) and only
+//  advances the event to 'ended' after a successful receipt. Any failure is
+//  recorded as 'settlement_failed' (with error + tx hash) so it can be retried.
+//  Clients (publicClient/walletClient/supabase) are injectable for testing.
+// ──────────────────────────────────────────────
+async function settleEvent(event, { isDistribute }, deps = {}) {
+  const pub = deps.publicClient || publicClient;
+  const wallet = deps.walletClient || walletClient;
+  const db = deps.supabase || supabase;
+
+  const eventId = event.id;
+  const eventIdBytes32 = uuidToBytes32(eventId);
+
+  const markFailed = async (message, txHash) => {
+    const update = { status: "settlement_failed", settlement_error: message };
+    if (txHash) update.settlement_tx_hash = txHash;
+    await db.from("events").update(update).eq("id", eventId);
+  };
+
+  // 1. Read on-chain truth: the pool the vault actually holds + distributed flag.
+  let prizePool;
+  let distributed;
+  try {
+    const info = await pub.readContract({
+      address: VAULT_ADDRESS,
+      abi: VAULT_ABI,
+      functionName: "getEventInfo",
+      args: [eventIdBytes32],
+    });
+    prizePool = info[2];
+    distributed = info[3];
+  } catch (readErr) {
+    console.error("settleEvent: getEventInfo read failed:", readErr);
+    await markFailed(`getEventInfo read failed: ${readErr.message}`, null);
+    return { ok: false, error: readErr.message };
+  }
+
+  // 2. Idempotency: if funds already moved on-chain, just sync the DB status.
+  if (distributed) {
+    await db
+      .from("events")
+      .update({ status: "ended", settlement_error: null })
+      .eq("id", eventId);
+    return { ok: true, alreadyDistributed: true };
+  }
+
+  // 3. Build and send the settlement transaction.
+  let txHash = null;
+  try {
+    if (isDistribute) {
+      const { data: winners } = await db
+        .from("participants")
+        .select("wallet_address")
+        .eq("event_id", eventId)
+        .eq("status", "winner");
+
+      if (!winners || winners.length === 0) {
+        await markFailed("No winners recorded for distribution", null);
+        return { ok: false, error: "no winners" };
+      }
+
+      // Shares derived from the ON-CHAIN pool so sum(shares) === prizePool;
+      // the rounding remainder goes to the last winner (never SharesMismatch).
+      const winnerAddresses = winners.map((w) => w.wallet_address);
+      const sharePerWinner = prizePool / BigInt(winners.length);
+      const shares = winners.map(() => sharePerWinner);
+      const sumShares = shares.reduce((a, b) => a + b, 0n);
+      if (sumShares < prizePool) {
+        shares[shares.length - 1] += prizePool - sumShares;
+      }
+
+      txHash = await wallet.writeContract({
+        address: VAULT_ADDRESS,
+        abi: VAULT_ABI,
+        functionName: "distributePrize",
+        args: [eventIdBytes32, winnerAddresses, shares],
+      });
+    } else {
+      txHash = await wallet.writeContract({
+        address: VAULT_ADDRESS,
+        abi: VAULT_ABI,
+        functionName: "emergencyRefund",
+        args: [eventIdBytes32],
+      });
+    }
+
+    const receipt = await pub.waitForTransactionReceipt({ hash: txHash });
+    if (receipt.status !== "success") {
+      throw new Error(`Transaction reverted on-chain (status=${receipt.status})`);
+    }
+  } catch (chainErr) {
+    console.error(
+      `settleEvent: on-chain ${isDistribute ? "distributePrize" : "emergencyRefund"} failed:`,
+      chainErr
+    );
+    await markFailed(chainErr.message, txHash);
+    return { ok: false, error: chainErr.message };
+  }
+
+  // 4. Success — only NOW mark the event ended.
+  await db
+    .from("events")
+    .update({ status: "ended", settlement_tx_hash: txHash, settlement_error: null })
+    .eq("id", eventId);
+  return { ok: true, txHash };
+}
+
+// Authorization decision for POST /:id/retry-settlement — pure & unit-testable.
+function authorizeRetrySettlement(event, callerAddress, adminAddress) {
+  if (!event) return { ok: false, code: 404, error: "Event not found" };
+  const caller = (callerAddress || "").toLowerCase();
+  const isCreator = !!caller && caller === event.creator_address.toLowerCase();
+  const isAdmin = !!caller && !!adminAddress && caller === adminAddress.toLowerCase();
+  if (!isCreator && !isAdmin) {
+    return { ok: false, code: 403, error: "Only the event creator or admin can retry settlement" };
+  }
+  if (event.status !== "settlement_failed") {
+    return { ok: false, code: 400, error: "Retry is only allowed for events in 'settlement_failed' status" };
+  }
+  return { ok: true };
+}
+
+// ──────────────────────────────────────────────
 //  Consensus Resolution Helper
 // ──────────────────────────────────────────────
 async function resolveConsensus(eventId) {
@@ -1306,79 +1427,11 @@ async function resolveConsensus(eventId) {
     return;
   }
 
-  if (agreePercent >= event.consensus_threshold) {
-    // Consensus reached — distribute prizes on-chain via Viem
-    const { data: winners } = await supabase
-      .from("participants")
-      .select("wallet_address")
-      .eq("event_id", eventId)
-      .eq("status", "winner");
-
-    if (winners && winners.length > 0) {
-      const eventIdBytes32 = uuidToBytes32(eventId);
-      const { data: onChainEvent } = await supabase
-        .from("events")
-        .select("ticket_price")
-        .eq("id", eventId)
-        .single();
-
-      const { data: allParticipants } = await supabase
-        .from("participants")
-        .select("id")
-        .eq("event_id", eventId);
-
-      const totalPool = parseUnits(
-        String(onChainEvent.ticket_price * allParticipants.length),
-        6
-      );
-      const sharePerWinner = totalPool / BigInt(winners.length);
-
-      const winnerAddresses = winners.map((w) => w.wallet_address);
-      const shares = winners.map(() => sharePerWinner);
-
-      // Adjust last share for rounding
-      const sumShares = shares.reduce((a, b) => a + b, 0n);
-      if (sumShares < totalPool) {
-        shares[shares.length - 1] += totalPool - sumShares;
-      }
-
-      try {
-        const txHash = await walletClient.writeContract({
-          address: VAULT_ADDRESS,
-          abi: VAULT_ABI,
-          functionName: "distributePrize",
-          args: [eventIdBytes32, winnerAddresses, shares],
-        });
-        await publicClient.waitForTransactionReceipt({ hash: txHash });
-      } catch (chainErr) {
-        console.error("On-chain distributePrize failed:", chainErr);
-      }
-    }
-
-    await supabase
-      .from("events")
-      .update({ status: "ended" })
-      .eq("id", eventId);
-  } else {
-    // Consensus NOT reached — emergency refund via Viem
-    const eventIdBytes32 = uuidToBytes32(eventId);
-    try {
-      const txHash = await walletClient.writeContract({
-        address: VAULT_ADDRESS,
-        abi: VAULT_ABI,
-        functionName: "emergencyRefund",
-        args: [eventIdBytes32],
-      });
-      await publicClient.waitForTransactionReceipt({ hash: txHash });
-    } catch (chainErr) {
-      console.error("On-chain emergencyRefund failed:", chainErr);
-    }
-
-    await supabase
-      .from("events")
-      .update({ status: "ended" })
-      .eq("id", eventId);
-  }
+  // Settle on-chain. Pool & shares come from on-chain state (getEventInfo), and
+  // the event only becomes 'ended' after a successful receipt; otherwise it is
+  // marked 'settlement_failed' for retry (escrow-payout-integrity / F1 + F2).
+  const isDistribute = agreePercent >= event.consensus_threshold;
+  await settleEvent(event, { isDistribute });
 
   // Minority Penalty: if consensus >= 85%, mark minority voters
   if (agreePercent >= 85 || agreePercent <= 15) {
@@ -1463,6 +1516,60 @@ router.get("/reputation/:wallet", async (req, res) => {
   }
 });
 
+// ──────────────────────────────────────────────
+//  POST /api/events/:id/retry-settlement — Retry a failed escrow settlement
+//  (creator/admin only; valid only while status === 'settlement_failed')
+// ──────────────────────────────────────────────
+router.post("/:id/retry-settlement", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { caller_address } = req.body;
+
+    if (!caller_address) {
+      return res.status(400).json({ error: "Missing caller_address" });
+    }
+
+    const { data: event, error: eventErr } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    const auth = authorizeRetrySettlement(
+      eventErr ? null : event,
+      caller_address,
+      adminAccount?.address
+    );
+    if (!auth.ok) {
+      return res.status(auth.code).json({ error: auth.error });
+    }
+
+    // Recompute the settlement decision from the cast votes (same as resolveConsensus).
+    const { data: votes } = await supabase
+      .from("votes")
+      .select("is_valid")
+      .eq("event_id", id);
+    const total = (votes || []).length;
+    const agreeCount = (votes || []).filter((v) => v.is_valid).length;
+    const agreePercent = total > 0 ? (agreeCount / total) * 100 : 0;
+    const isDistribute = agreePercent >= event.consensus_threshold;
+
+    const result = await settleEvent(event, { isDistribute });
+    if (!result.ok) {
+      return res
+        .status(502)
+        .json({ error: "Settlement retry failed", detail: result.error });
+    }
+
+    res.json({ status: "ended", tx_hash: result.txHash ?? null });
+  } catch (err) {
+    console.error("POST /api/events/:id/retry-settlement error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Export for use in cron and main app
 module.exports = router;
 module.exports.resolveConsensus = resolveConsensus;
+module.exports.settleEvent = settleEvent;
+module.exports.authorizeRetrySettlement = authorizeRetrySettlement;
