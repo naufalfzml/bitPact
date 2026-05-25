@@ -108,7 +108,7 @@ export default function EventDetailPage() {
   const fetchEventDetail = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/events/${id}`);
-      if (!res.ok) throw new Error("Gagal mengambil detail turnamen");
+      if (!res.ok) throw new Error("Failed to load tournament details");
       const data = await res.json();
       setEvent(data);
 
@@ -198,7 +198,7 @@ export default function EventDetailPage() {
       if (publicClient) {
         const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveTx });
         if (approveReceipt.status !== "success") {
-          throw new Error("Persetujuan USDC gagal on-chain. Silakan coba lagi.");
+          throw new Error("USDC approval failed on-chain. Please try again.");
         }
       }
 
@@ -219,7 +219,7 @@ export default function EventDetailPage() {
       if (publicClient) {
         const receipt = await publicClient.waitForTransactionReceipt({ hash: registerTx });
         if (receipt.status !== "success") {
-          throw new Error("Transaksi blockchain gagal (reverted). Pendaftaran ditolak.");
+          throw new Error("Blockchain transaction failed (reverted). Registration was rejected.");
         }
       }
 
@@ -243,9 +243,9 @@ export default function EventDetailPage() {
       if (!res.ok) {
         const errorData = await res.json();
         if (res.status === 403 && event.access_type === "password") {
-          setPasswordError(errorData.error || "Password turnamen tidak valid");
+          setPasswordError(errorData.error || "Invalid tournament password");
         }
-        throw new Error(errorData.error || "Gagal mendaftar di database");
+        throw new Error(errorData.error || "Failed to register in the database");
       }
 
       setStatusMessage("REGISTRATION SUCCESSFUL! WELCOME PLAYER.");
@@ -305,7 +305,7 @@ export default function EventDetailPage() {
       }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Gagal memilih mode pertandingan");
+    if (!res.ok) throw new Error(data.error || "Failed to select game mode");
     return data;
   };
 
@@ -319,10 +319,10 @@ export default function EventDetailPage() {
           method: "POST",
         });
         const startData = await startRes.json();
-        if (!startRes.ok) throw new Error(startData.error || "Gagal memulai turnamen FFA");
-        alert("■ TURNAMEN FFA RESMI DIMULAI ■");
+        if (!startRes.ok) throw new Error(startData.error || "Failed to start the FFA tournament");
+        alert("■ FFA TOURNAMENT OFFICIALLY STARTED ■");
       } else {
-        alert("Format terpilih! Draf bagan kosong berhasil dibuat.");
+        alert("Format selected! An empty bracket draft has been created.");
       }
       fetchEventDetail();
     } catch (err: any) {
@@ -373,8 +373,8 @@ export default function EventDetailPage() {
         }),
       });
 
-      if (!res.ok) throw new Error("Gagal menyimpan draf bagan");
-      alert("Draf bagan diacak otomatis dan disimpan!");
+      if (!res.ok) throw new Error("Failed to save bracket draft");
+      alert("Bracket draft auto-shuffled and saved!");
       fetchEventDetail();
     } catch (err: any) {
       alert(`Shuffle Error: ${err.message}`);
@@ -396,8 +396,8 @@ export default function EventDetailPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal menyimpan draf bagan");
-      alert("Draf bagan pertandingan disimpan!");
+      if (!res.ok) throw new Error(data.error || "Failed to save bracket draft");
+      alert("Bracket draft saved!");
       fetchEventDetail();
     } catch (err: any) {
       alert(`Save Error: ${err.message}`);
@@ -422,7 +422,7 @@ export default function EventDetailPage() {
         });
         if (!saveRes.ok) {
           const data = await saveRes.json();
-          throw new Error(data.error || "Gagal mengunci draf sebelum memulai");
+          throw new Error(data.error || "Failed to lock the draft before starting");
         }
       }
 
@@ -431,9 +431,9 @@ export default function EventDetailPage() {
         method: "POST",
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal memulai turnamen");
+      if (!res.ok) throw new Error(data.error || "Failed to start tournament");
 
-      alert("■ TURNAMEN RESMI DIMULAI ■");
+      alert("■ TOURNAMENT OFFICIALLY STARTED ■");
       fetchEventDetail();
     } catch (err: any) {
       alert(`Start Error: ${err.message}`);
@@ -497,7 +497,7 @@ export default function EventDetailPage() {
           winner: winnerAddress,
         }),
       });
-      if (!res.ok) throw new Error("Gagal mengupdate pemenang");
+      if (!res.ok) throw new Error("Failed to update winner");
       fetchEventDetail();
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -512,7 +512,7 @@ export default function EventDetailPage() {
         body: JSON.stringify({ winners: winnersList }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal mensubmit pemenang");
+      if (!res.ok) throw new Error(data.error || "Failed to submit winners");
       fetchEventDetail();
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -534,7 +534,7 @@ export default function EventDetailPage() {
         method: "POST",
         body: formData,
       });
-      if (!res.ok) throw new Error("Gagal mengupload bukti foto");
+      if (!res.ok) throw new Error("Failed to upload photo proof");
       alert("Photo Proof uploaded successfully!");
       setPhotoFile(null);
       fetchEventDetail();
@@ -556,7 +556,7 @@ export default function EventDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ winners: list }),
       });
-      if (!res.ok) throw new Error("Gagal mengajukan banding");
+      if (!res.ok) throw new Error("Failed to submit appeal");
       alert("Appeal successfully submitted! Voting reopened.");
       setAppealWinners("");
       fetchEventDetail();
@@ -657,14 +657,14 @@ export default function EventDetailPage() {
                   <div className="bp-text-center" style={{ padding: "16px 8px", border: "2px solid var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
                     <p className="bp-text-red bp-text-sm" style={{ letterSpacing: "1px" }}>■ KREATUR TIDAK BISA IKUT BERMAIN ■</p>
                     <p className="bp-text-xs bp-text-muted bp-mt-sm">
-                      Sebagai penyelenggara/juri, Anda tidak dapat berpartisipasi di turnamen buatan sendiri.
+                      As the organizer or jury, you cannot participate in a tournament you created yourself.
                     </p>
                   </div>
                 ) : event.roster_locked ? (
                   <div className="bp-text-center" style={{ padding: "16px 8px", border: "2px dashed var(--bp-accent)", background: "rgba(255,193,7,0.05)" }}>
                     <p className="bp-text-accent bp-text-sm" style={{ letterSpacing: "1px" }}>■ REGISTRASI DITUTUP ■</p>
                     <p className="bp-text-xs bp-text-muted bp-mt-sm">
-                      Pendaftaran telah ditutup oleh penyelenggara. Turnamen sedang dalam fase penyusunan draf pertandingan.
+                      Registration has been closed by the organizer. The tournament is currently in the bracket drafting phase.
                     </p>
                   </div>
                 ) : isRegistered ? (
@@ -676,7 +676,7 @@ export default function EventDetailPage() {
                   <div className="bp-text-center" style={{ padding: "16px 8px", border: "2px dashed var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
                     <p className="bp-text-red bp-text-sm" style={{ letterSpacing: "1px" }}>■ SLOT PENUH ■</p>
                     <p className="bp-text-xs bp-text-muted bp-mt-sm">
-                      Kapasitas maksimum turnamen ({event.max_participants} pendaftar) telah terpenuhi.
+                      The tournament has reached its maximum capacity ({event.max_participants} registrants).
                     </p>
                   </div>
                 ) : event.access_type === "password" ? (
@@ -714,7 +714,7 @@ export default function EventDetailPage() {
                   <div className="bp-whitelist-banner denied">
                     ■ AKSES TERBATAS: ANDA TIDAK DIUNDANG ■
                     <p className="bp-text-xs bp-text-muted" style={{ marginTop: "8px", color: "var(--bp-muted)" }}>
-                      Turnamen ini hanya untuk peserta yang diundang. Hubungi penyelenggara untuk mendapatkan akses.
+                      This tournament is for invited participants only. Contact the organizer to request access.
                     </p>
                   </div>
                 ) : (
@@ -857,7 +857,7 @@ export default function EventDetailPage() {
                 {/* Social Connect Lookup */}
                 <div style={{ marginBottom: "12px", padding: "10px", border: "1px solid var(--bp-accent)", background: "rgba(0,0,0,0.3)" }}>
                   <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "8px" }}>
-                    ■ MASUKKAN EMAIL / NO. TELEPON PESERTA ■
+                    ■ ENTER PLAYER EMAIL / PHONE NUMBER ■
                   </p>
                   <form onSubmit={async (e) => {
                     e.preventDefault();
@@ -881,7 +881,7 @@ export default function EventDetailPage() {
                       disabled={socialLookupStatus === "loading" || !socialInput.trim()}
                       style={{ whiteSpace: "nowrap" }}
                     >
-                      {socialLookupStatus === "loading" ? "■ MENGHUBUNGI DECENTRALIZED IDENTITY NETWORK... ■" : "■ CARI DAN UNDANG ■"}
+                      {socialLookupStatus === "loading" ? "■ CONTACTING DECENTRALIZED IDENTITY NETWORK... ■" : "■ FIND AND INVITE ■"}
                     </button>
                   </form>
 
@@ -889,7 +889,7 @@ export default function EventDetailPage() {
                   {socialLookupStatus === "resolved" && resolvedAddress && (
                     <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-green)", background: "rgba(0,255,0,0.05)" }}>
                       <p className="bp-text-xs bp-text-green" style={{ marginBottom: "4px" }}>
-                        ■ DITEMUKAN: {resolvedAddress.slice(0, 14)}...{resolvedAddress.slice(-8)}
+                        ■ FOUND: {resolvedAddress.slice(0, 14)}...{resolvedAddress.slice(-8)}
                       </p>
                       <button
                         className="bp-btn bp-btn-green bp-text-xs bp-w-full"
@@ -910,17 +910,17 @@ export default function EventDetailPage() {
                   {socialLookupStatus === "not_resolved" && (
                     <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
                       <p className="bp-text-xs bp-text-red">
-                        ■ IDENTITAS TIDAK TERDAFTAR DI CELO SOCIAL CONNECT ■
+                      ■ IDENTITY NOT REGISTERED IN CELO SOCIAL CONNECT ■
                       </p>
                       <p className="bp-text-xs bp-text-muted" style={{ marginTop: "4px" }}>
-                        Gunakan input manual di bawah untuk memasukkan alamat wallet secara langsung.
+                        Use the manual input below to enter a wallet address directly.
                       </p>
                     </div>
                   )}
                 </div>
 
                 {/* Manual wallet address input */}
-                <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "6px" }}>Atau masukkan alamat wallet secara manual:</p>
+                <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "6px" }}>Or enter a wallet address manually:</p>
                 <div className="bp-flex bp-gap-sm bp-mb-sm" style={{ alignItems: "flex-end" }}>
                   <input
                     type="text"
@@ -1007,7 +1007,7 @@ export default function EventDetailPage() {
                             <button
                               className="bp-btn-delete"
                               onClick={async () => {
-                                if (!confirm(`Hapus ${generateGamerTag(p.wallet_address)} dari roster?`)) return;
+                                if (!confirm(`Remove ${generateGamerTag(p.wallet_address)} from the roster?`)) return;
                                 try {
                                   const res = await fetch(`${API_BASE_URL}/events/${event.id}/remove-participant`, {
                                     method: "POST",
@@ -1016,7 +1016,7 @@ export default function EventDetailPage() {
                                   });
                                   if (!res.ok) throw new Error("Failed");
                                   fetchEventDetail();
-                                } catch { alert("Gagal menghapus peserta"); }
+                                } catch { alert("Failed to remove participant"); }
                               }}
                             >
                               ■ DEL ■
@@ -1042,7 +1042,7 @@ export default function EventDetailPage() {
               {event.status === "setup" && !event.roster_locked && (
                 <div>
                   <p className="bp-text-xs bp-text-muted bp-mb-md">
-                    Registrasi pemain sedang terbuka ({event.participants.length}/{event.max_participants ? event.max_participants : "∞"} pemain). Tutup pendaftaran untuk mengunci roster peserta dan membuka fase draf bagan.
+                    Player registration is open ({event.participants.length}/{event.max_participants ? event.max_participants : "∞"} players). Close registration to lock the roster and open the bracket draft phase.
                   </p>
                   <button
                     className="bp-btn bp-btn-accent bp-w-full"
@@ -1055,8 +1055,8 @@ export default function EventDetailPage() {
                           body: JSON.stringify({ creator_address: address }),
                         });
                         const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || "Gagal mengunci roster");
-                        alert(`Pendaftaran ditutup! Roster pendaftar dikunci secara permanen.`);
+                        if (!res.ok) throw new Error(data.error || "Failed to lock roster");
+                        alert(`Registration closed! The participant roster has been locked permanently.`);
                         fetchEventDetail();
                       } catch (err: any) {
                         alert(`Error: ${err.message}`);
@@ -1067,7 +1067,7 @@ export default function EventDetailPage() {
                   </button>
                   {event.participants.length < 2 && (
                     <p className="bp-text-red" style={{ fontSize: "0.4rem", marginTop: "4px", textAlign: "center" }}>
-                      * Butuh minimal 2 peserta untuk menutup pendaftaran.
+                      * You need at least 2 participants to close registration.
                     </p>
                   )}
                 </div>
@@ -1079,7 +1079,7 @@ export default function EventDetailPage() {
                     /* Select Game Mode dynamically */
                     <div>
                       <p className="bp-text-xs bp-text-muted bp-mb-md">
-                        Roster terkunci ({event.participants.length} pemain). Silakan pilih mode pertandingan untuk turnamen ini:
+                        Roster locked ({event.participants.length} players). Please select the game mode for this tournament:
                       </p>
                       <div className="bp-field">
                         <label className="bp-label">MATCHPLAY FORMAT</label>
@@ -1175,7 +1175,7 @@ export default function EventDetailPage() {
                         <div style={{ padding: "12px", border: "1px solid var(--bp-cyan)", background: "rgba(0,255,255,0.05)", marginBottom: "12px", textAlign: "center" }}>
                           <p className="bp-text-xs" style={{ color: "var(--bp-cyan)" }}>■ MODE TIM 2V2 / CUSTOM ■</p>
                           <p className="bp-text-muted bp-mt-sm" style={{ fontSize: "0.4rem" }}>
-                            Peserta terdaftar ({event.participants.length} pemain) akan secara acak dibagi menjadi Team Merah dan Team Biru saat pertandingan resmi dimulai.
+                            Registered participants ({event.participants.length} players) will be randomly split into Red Team and Blue Team when the official match starts.
                           </p>
                         </div>
                       )}
@@ -1299,7 +1299,7 @@ export default function EventDetailPage() {
               {event.status === "voting" && (
                 <div>
                   <p className="bp-text-xs bp-text-muted bp-mb-md">
-                    Turnamen dalam fase Voting. Payout otomatis terjadi setelah masa voting selesai. Jika Anda ingin menyelesaikannya lebih cepat secara manual, Anda dapat memicu tombol distribusi hadiah di bawah ini setelah kuorum suara pemilih terpenuhi (&gt;51%).
+                    The tournament is currently in the voting phase. Payout happens automatically once voting ends. If you want to settle it sooner, you can trigger manual prize distribution below after voter quorum is reached (&gt;51%).
                   </p>
                   
                   {/* Quorum Progress bar */}
@@ -1328,7 +1328,7 @@ export default function EventDetailPage() {
                     className="bp-btn bp-btn-green bp-w-full"
                     disabled={Number(event.voting.percentage || 0) < 51}
                     onClick={async () => {
-                      if (!confirm("Picu distribusi hadiah secara manual berdasarkan voting konsensus saat ini?")) return;
+                      if (!confirm("Trigger manual prize distribution based on the current consensus vote?")) return;
                       try {
                         const res = await fetch(`${API_BASE_URL}/events/${event.id}/distribute`, {
                           method: "POST",
@@ -1336,8 +1336,8 @@ export default function EventDetailPage() {
                           body: JSON.stringify({ creator_address: address }),
                         });
                         const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || "Gagal mendistribusikan hadiah");
-                        alert("■ DANA HADIAH BERHASIL DIDISTRIBUSIKAN! ■");
+                        if (!res.ok) throw new Error(data.error || "Failed to distribute prize");
+                        alert("■ PRIZE FUNDS DISTRIBUTED SUCCESSFULLY! ■");
                         fetchEventDetail();
                       } catch (err: any) {
                         alert(`Distribution Error: ${err.message}`);

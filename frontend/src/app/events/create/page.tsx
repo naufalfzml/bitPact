@@ -72,7 +72,7 @@ export default function CreateEventPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal membuat turnamen");
+      if (!res.ok) throw new Error(data.error || "Failed to create tournament");
 
       // Redirect to detail page
       router.push(`/events/${data.event.id}`);
@@ -195,13 +195,13 @@ export default function CreateEventPage() {
               {/* Social Connect Lookup */}
               <div style={{ padding: "12px", border: "1px solid var(--bp-cyan)", background: "rgba(0,255,255,0.05)", marginBottom: "12px" }}>
                 <p className="bp-text-xs" style={{ color: "var(--bp-cyan)", marginBottom: "8px" }}>
-                  ■ MASUKKAN EMAIL / NO. TELEPON PESERTA ■
+                  ■ ENTER PLAYER EMAIL / PHONE NUMBER ■
                 </p>
                 <div className="bp-flex bp-gap-sm" style={{ alignItems: "flex-end" }}>
                   <input
                     type="text"
                     className="bp-input bp-text-xs"
-                    placeholder="email@contoh.com atau +628..."
+                    placeholder="player@example.com or +123..."
                     value={socialSearchInput}
                     onChange={(e) => {
                       setSocialSearchInput(e.target.value);
@@ -245,7 +245,7 @@ export default function CreateEventPage() {
                     }}
                     style={{ whiteSpace: "nowrap" }}
                   >
-                    {socialSearchStatus === "loading" ? "■ MENGHUBUNGI DECENTRALIZED IDENTITY NETWORK... ■" : "■ CARI DAN UNDANG ■"}
+                    {socialSearchStatus === "loading" ? "■ CONTACTING DECENTRALIZED IDENTITY NETWORK... ■" : "■ FIND AND INVITE ■"}
                   </button>
                 </div>
 
@@ -253,7 +253,7 @@ export default function CreateEventPage() {
                 {socialSearchStatus === "resolved" && socialResolvedAddr && (
                   <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-green)", background: "rgba(0,255,0,0.05)" }}>
                     <p className="bp-text-xs bp-text-green">
-                      ■ DITEMUKAN: {socialResolvedAddr.slice(0, 14)}...{socialResolvedAddr.slice(-8)} — otomatis ditambahkan ke whitelist
+                      ■ FOUND: {socialResolvedAddr.slice(0, 14)}...{socialResolvedAddr.slice(-8)} — automatically added to the whitelist
                     </p>
                   </div>
                 )}
@@ -262,7 +262,7 @@ export default function CreateEventPage() {
                 {socialSearchStatus === "not_resolved" && (
                   <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
                     <p className="bp-text-xs bp-text-red" style={{ marginBottom: "6px" }}>
-                      ■ IDENTITAS TIDAK TERDAFTAR DI CELO SOCIAL CONNECT ■
+                      ■ IDENTITY NOT REGISTERED IN CELO SOCIAL CONNECT ■
                     </p>
                     <button
                       type="button"
@@ -272,7 +272,7 @@ export default function CreateEventPage() {
                         setSocialSearchStatus("idle");
                       }}
                     >
-                      ■ MASUKKAN SECARA MANUAL ■
+                      ■ ENTER MANUALLY ■
                     </button>
                   </div>
                 )}
@@ -281,7 +281,7 @@ export default function CreateEventPage() {
               {/* Manual wallet input fallback */}
               {showManualFallback && (
                 <div style={{ padding: "12px", border: "1px solid var(--bp-accent)", background: "rgba(255,193,7,0.05)", marginBottom: "12px" }}>
-                  <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "8px" }}>Masukkan alamat wallet secara manual:</p>
+                  <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "8px" }}>Enter a wallet address manually:</p>
                   <div className="bp-flex bp-gap-sm" style={{ alignItems: "flex-end" }}>
                     <input
                       type="text"
@@ -314,7 +314,7 @@ export default function CreateEventPage() {
               {/* Whitelist roster preview */}
               {whitelistAddresses.length > 0 && (
                 <div style={{ padding: "8px", border: "1px solid var(--bp-border)", marginTop: "8px" }}>
-                  <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "4px" }}>■ DAFTAR UNDANGAN ({whitelistAddresses.length}):</p>
+                  <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "4px" }}>■ INVITE LIST ({whitelistAddresses.length}):</p>
                   {whitelistAddresses.map((addr, i) => (
                     <div key={i} className="bp-flex bp-justify-between bp-items-center" style={{ padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                       <span className="bp-text-xs bp-text-green" style={{ fontFamily: "var(--bp-font)" }}>

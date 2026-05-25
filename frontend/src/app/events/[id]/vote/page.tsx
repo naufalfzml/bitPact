@@ -44,7 +44,7 @@ export default function VotingConsolePage() {
   const fetchEventDetail = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/events/${id}`);
-      if (!res.ok) throw new Error("Gagal mengambil data turnamen");
+      if (!res.ok) throw new Error("Failed to load tournament");
       const data = await res.json();
       setEvent(data);
     } catch (err: any) {
@@ -113,7 +113,7 @@ export default function VotingConsolePage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal mensubmit vote");
+      if (!res.ok) throw new Error(data.error || "Failed to submit vote");
 
       setSuccessMsg(`VOTE RECORDED SUCCESSFULY! INJECTING INTO BLOCKCHAIN...`);
       setTimeout(() => {
@@ -180,7 +180,7 @@ export default function VotingConsolePage() {
         <div>
           {/* Minority Penalty Warning Banner */}
           <div className="bp-penalty-warning">
-            ■ WARNING: PENALTI -10 HP HANYA BERLAKU JIKA HASIL AKHIR >=85% SEPIHAK DAN ANDA BERADA DI PIHAK MINORITAS ■
+            ■ WARNING: A -10 HP PENALTY APPLIES ONLY IF THE FINAL RESULT IS A {">="}85% LANDSLIDE AND YOU ARE ON THE MINORITY SIDE ■
           </div>
 
           {!isParticipant ? (
@@ -213,7 +213,7 @@ export default function VotingConsolePage() {
           {isCreator && quorumMet && (
             <div className="bp-card bp-mb-lg" style={{ borderColor: "var(--bp-green)", background: "rgba(57,255,20,0.05)" }}>
               <p className="bp-text-xs bp-text-muted bp-mb-md">
-                Kuorum voting tercapai ({quorumPercent.toFixed(1)}%). Anda dapat mendistribusikan hadiah sekarang.
+                Voting quorum reached ({quorumPercent.toFixed(1)}%). You can distribute the prize now.
               </p>
               <button
                 className="bp-btn-distribute"
@@ -227,8 +227,8 @@ export default function VotingConsolePage() {
                       body: JSON.stringify({ creator_address: address }),
                     });
                     const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || "Gagal mendistribusikan hadiah");
-                    alert("Hadiah berhasil didistribusikan!");
+                    if (!res.ok) throw new Error(data.error || "Failed to distribute prize");
+                    alert("Prize distributed successfully!");
                     fetchEventDetail();
                   } catch (err: any) {
                     alert(`Error: ${err.message}`);

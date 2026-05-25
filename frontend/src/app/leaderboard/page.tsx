@@ -19,7 +19,7 @@ export default function LeaderboardPage() {
     async function fetchLeaderboard() {
       try {
         const res = await fetch(`${API_BASE_URL}/events/leaderboard/reputation`);
-        if (!res.ok) throw new Error("Gagal mengambil data leaderboard");
+        if (!res.ok) throw new Error("Failed to load leaderboard");
         const data = await res.json();
         setEntries(data);
       } catch (err: any) {
@@ -38,9 +38,9 @@ export default function LeaderboardPage() {
 
       <div className="bp-card bp-mb-lg">
         <p className="bp-text-xs bp-text-muted" style={{ lineHeight: "1.6" }}>
-          Papan peringkat reputasi pemain bitPact. Skor HP berkurang jika pemain
-          secara konsisten memilih di pihak minoritas saat voting konsensus.
-          Pemain tepercaya memiliki HP tinggi.
+          bitPact's player reputation leaderboard. HP decreases when a player
+          consistently votes with the minority during consensus rounds.
+          Trusted players maintain high HP.
         </p>
       </div>
 
@@ -65,7 +65,7 @@ export default function LeaderboardPage() {
       {!loading && !error && entries.length === 0 && (
         <div className="bp-card bp-text-center" style={{ padding: "48px 24px" }}>
           <p className="bp-text-muted">
-            BELUM ADA DATA REPUTASI. MAINKAN TURNAMEN DAN VOTE UNTUK MEMULAI.
+            NO REPUTATION DATA YET. PLAY TOURNAMENTS AND VOTE TO GET STARTED.
           </p>
         </div>
       )}

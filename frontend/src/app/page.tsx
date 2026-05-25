@@ -27,7 +27,7 @@ export default function HomePage() {
     async function fetchEvents() {
       try {
         const res = await fetch(`${API_BASE_URL}/events`);
-        if (!res.ok) throw new Error("Gagal mengambil data turnamen");
+        if (!res.ok) throw new Error("Failed to load tournaments");
         const data = await res.json();
         setEvents(data);
       } catch (err: any) {
