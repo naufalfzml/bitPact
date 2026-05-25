@@ -1,12 +1,12 @@
-# 📜 bitPatch Documentation
+# 📜 bitPact Documentation
 
-Selamat datang di pusat dokumentasi teknis **bitPatch** — *Generalized Tournament & Campaign Maker* berbasis Web3 yang dirancang khusus untuk mengubah permainan nyata (*real-life matches*) menjadi turnamen berhadiah kripto secara aman, transparan, dan instan via **Opera MiniPay** pada jaringan **Celo**.
+Selamat datang di pusat dokumentasi teknis **bitPact** — *Generalized Tournament & Campaign Maker* berbasis Web3 yang dirancang khusus untuk mengubah permainan nyata (*real-life matches*) menjadi turnamen berhadiah kripto secara aman, transparan, dan instan via **Opera MiniPay** pada jaringan **Celo**.
 
 ---
 
-## 🎮 Konsep & Esensi bitPatch
+## 🎮 Konsep & Esensi bitPact
 
-bitPatch menjembatani keseruan kompetisi sosial fisik/nyata (seperti catur tongkrongan, basket 3v3, turnamen Tekken lokal, hingga kompetisi sederhana batu-gunting-kertas) dengan keunggulan Web3. Platform ini bertindak sebagai jaminan pihak ketiga (*blind escrow vault*) yang buta, mengunci dana pendaftaran secara desentralisasi penuh, dan mendistribusikannya ke pemenang berdasarkan keputusan konsensus demokratis dari para peserta sendiri.
+bitPact menjembatani keseruan kompetisi sosial fisik/nyata (seperti catur tongkrongan, basket 3v3, turnamen Tekken lokal, hingga kompetisi sederhana batu-gunting-kertas) dengan keunggulan Web3. Platform ini bertindak sebagai jaminan pihak ketiga (*blind escrow vault*) yang buta, mengunci dana pendaftaran secara desentralisasi penuh, dan mendistribusikannya ke pemenang berdasarkan keputusan konsensus demokratis dari para peserta sendiri.
 
 ---
 
@@ -21,14 +21,14 @@ Untuk menjaga keunikan estetika platform, setiap pengembangan antarmuka (fronten
 
 ## 🔄 Alur Utama Sistem (The Core Loop)
 
-Setiap turnamen di bitPatch berjalan melalui siklus hidup state terstruktur sebagai berikut:
+Setiap turnamen di bitPact berjalan melalui siklus hidup state terstruktur sebagai berikut:
 
 ```
 [ Setup ] ──► [ Active ] ──► [ Voting ] ──► [ Ended / Disputed ]
 ```
 
-1. **Setup (Pembuatan):** *Creator* membuat *Event* baru di platform dengan menentukan mode tanding, harga tiket (cUSD), dan aturan audit.
-2. **Registration (Pendaftaran):** Peserta mendaftar dengan mendepositkan cUSD sesuai harga tiket ke dalam smart contract *escrow vault*.
+1. **Setup (Pembuatan):** *Creator* membuat *Event* baru di platform dengan menentukan mode tanding, harga tiket (USDC), dan aturan audit.
+2. **Registration (Pendaftaran):** Peserta mendaftar dengan mendepositkan USDC sesuai harga tiket ke dalam smart contract *escrow vault*.
 3. **Active (Jalannya Laga):** *Creator* memulai event secara resmi. Peserta melakukan pertandingan fisik atau sosial di dunia nyata.
 4. **Result Input (Klaim Pemenang):** *Creator* menutup event dan memasukkan daftar pemenang pilihan juri ke sistem backend.
 5. **Consensus Voting (Pemungutan Suara):** Seluruh peserta melakukan voting kolektif secara demokratis untuk menyetujui atau menolak hasil juri.
@@ -40,19 +40,19 @@ Setiap turnamen di bitPatch berjalan melalui siklus hidup state terstruktur seba
 
 ## 📂 Panduan Direktori Dokumentasi (Index)
 
-Gunakan tautan di bawah ini untuk menavigasi dokumen referensi teknis bitPatch secara mendalam:
+Gunakan daftar di bawah ini untuk menavigasi dokumen referensi teknis bitPact secara mendalam:
 
-* 🏗️ [**System Architecture** (ARCHITECTURE.md)](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/ARCHITECTURE.md)  
+* 🏗️ **System Architecture** (`ARCHITECTURE.md`) *(belum tersedia)*  
   *Arsitektur tingkat tinggi dan detail interaksi komponen (Wagmi, Express, Supabase, Celo).*
-* 📄 [**Smart Contract Reference** (SMART-CONTRACT.md)](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/SMART-CONTRACT.md)  
+* 📄 **Smart Contract Reference** (`SMART-CONTRACT.md`) *(belum tersedia)*  
   *Panduan lengkap variabel, fungsi `register()`, `distributePrize()`, dan `emergencyRefund()` pada `BitPatchVault.sol`.*
-* 💾 [**Database Schema Guide** (DATABASE.md)](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/DATABASE.md)  
+* 💾 **Database Schema Guide** (`DATABASE.md`) *(belum tersedia)*  
   *Skema SQL DDL Supabase PostgreSQL untuk tabel events, participants, votes, dan brackets.*
-* 🛣️ [**Backend API Reference** (API.md)](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/API.md)  
+* 🛣️ **Backend API Reference** (`API.md`) *(belum tersedia)*  
   *Referensi lengkap rute endpoint, payload request/response JSON, dan status error Express.js.*
-* 🎮 [**Game Modes & Bracket Logic** (GAME-MODES.md)](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/GAME-MODES.md)  
+* 🎮 **Game Modes & Bracket Logic** (`GAME-MODES.md`) *(belum tersedia)*  
   *Panduan matematis penentuan bracket untuk Solo PvP (1v1), Team PvP (XvX), dan Free-For-All (FFA).*
-* 🛡️ [**Consensus & Anti-Troll Engine** (CONSENSUS.md)](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/CONSENSUS.md)  
+* 🛡️ **Consensus & Anti-Troll Engine** (`CONSENSUS.md`) *(belum tersedia)*  
   *Mekanisme 24h timeouts, 50/50 tie disputes, second appeals, serta formula hukuman troll (Minority Penalty).*
-* 🛠️ [**Developer Setup & Celo MCP Integration** (SETUP.md)](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/SETUP.md)  
+* 🛠️ **Developer Setup & Celo MCP Integration** (`SETUP.md`) *(belum tersedia)*  
   *Panduan konfigurasi lingkungan lokal (Foundry, Supabase CLI, Node.js) dan aktivasi Celo MCP Server untuk AI coding assistants.*

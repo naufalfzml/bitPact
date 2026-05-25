@@ -1,10 +1,10 @@
 ---
 
-## 📜 Project Overview: bitPatch
+## 📜 Project Overview: bitPact
 
 ### 1. Konsep & Identitas Visual
 
-bitPatch adalah *Generalized Tournament & Campaign Maker* berbasis Web3 untuk mengubah permainan nyata (*real-life fun/social matches*) menjadi turnamen berhadiah crypto secara aman dan transparan via Opera MiniPay.
+bitPact adalah *Generalized Tournament & Campaign Maker* berbasis Web3 untuk mengubah permainan nyata (*real-life fun/social matches*) menjadi turnamen berhadiah crypto secara aman dan transparan via Opera MiniPay.
 
 * **Tema Estetika:** *Minimalist 8-Bit Retro / Pixel Art*. Antarmuka bersih, minim teks pajangan, mengandalkan tata letak geometris kotak yang tegas.
 * **Aturan Identitas:** Logo berupa monogram atau siluet piksel geometris murni tanpa teks (*text-free*). Seluruh elemen UI **sama sekali tidak menggunakan ikon atau bentuk panah (no arrows)** untuk mempertahankan keunikan visual.
@@ -12,7 +12,7 @@ bitPatch adalah *Generalized Tournament & Campaign Maker* berbasis Web3 untuk me
 ### 2. Alur Utama Aplikasi (The Core Loop)
 
 * **Langkah Pertama:** Creator membuat *Event* baru di platform.
-* **Langkah Kedua:** Peserta mendaftar dengan membayar tiket menggunakan cUSD via MiniPay.
+* **Langkah Kedua:** Peserta mendaftar dengan membayar tiket menggunakan USDC via MiniPay.
 * **Langkah Ketiga:** Creator memulai jalannya *Event* secara resmi.
 * **Langkah Keempat:** Peserta menjalankan permainan nyata atau aktivitas sosial di dunia riil.
 * **Langkah Kelima:** Creator mengakhiri *Event* dan menginput daftar pemenang ke sistem.
@@ -65,7 +65,7 @@ CREATE TABLE events (
     title TEXT NOT NULL,
     game_mode TEXT NOT NULL, -- '1v1', 'team', 'ffa'
     team_size INT DEFAULT 1,
-    ticket_price NUMERIC NOT NULL, -- dalam cUSD
+    ticket_price NUMERIC NOT NULL, -- dalam USDC
     photo_required BOOLEAN DEFAULT false,
     status TEXT DEFAULT 'setup', -- 'setup', 'active', 'voting', 'ended', 'disputed'
     created_at TIMESTAMP DEFAULT NOW()
@@ -97,7 +97,7 @@ CREATE TABLE votes (
 Kontrak pintar bertindak sebagai *escrow* pihak ketiga yang buta untuk mengunci dana.
 
 * state variables: Menyimpan *mapping* data dari eventId unik menuju ke total akumulasi dana *pool*, status distribusi hadiah, dan alamat *wallet* kreator.
-* function register(bytes32 eventId): Menerima transfer token cUSD dari dompet peserta via MiniPay dan menambahkan saldo ke dalam *pool event* tersebut.
+* function register(bytes32 eventId): Menerima transfer token USDC dari dompet peserta via MiniPay dan menambahkan saldo ke dalam *pool event* tersebut.
 * function distributePrize(bytes32 eventId, address[] memory winners, uint256[] memory shares): Hanya bisa dipanggil oleh dompet otoritas *backend* (Express JS) setelah proses voting konsensus mencapai kuorum yang valid. Dana langsung ditransfer otomatis ke dompet para pemenang.
 * function emergencyRefund(bytes32 eventId): Mengembalikan dana tiket secara utuh ke seluruh peserta jika hasil voting akhir menyatakan juri berbuat curang atau tidak valid.
 
@@ -151,4 +151,4 @@ Aplikasi *Social-Fi* yang melibatkan kompetisi nyata rentan terhadap tindakan *t
 
 
 * **Skenario Keempat: Apa yang terjadi jika seluruh peserta kompak memberikan suara "Tolak" karena juri terbukti curang?**
-* *Mitigasi:* Kontrak pintar akan mengeksekusi fungsi emergencyRefund. Dana cUSD yang tersimpan di dalam *escrow vault* akan langsung dikembalikan secara otomatis ke masing-masing alamat *wallet* peserta asal tanpa potongan, sehingga keamanan dana tetap terjaga secara desentralisasi penuh.
+* *Mitigasi:* Kontrak pintar akan mengeksekusi fungsi emergencyRefund. Dana USDC yang tersimpan di dalam *escrow vault* akan langsung dikembalikan secara otomatis ke masing-masing alamat *wallet* peserta asal tanpa potongan, sehingga keamanan dana tetap terjaga secara desentralisasi penuh.

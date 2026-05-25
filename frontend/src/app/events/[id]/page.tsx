@@ -35,7 +35,7 @@ interface EventDetail {
   status: "setup" | "active" | "voting" | "ended" | "disputed";
   creator_address: string;
   created_at: string;
-  access_type: "password" | "invite_only";
+  access_type: "public" | "password" | "invite_only";
   roster_locked?: boolean;
   max_participants?: number;
   participants: Participant[];

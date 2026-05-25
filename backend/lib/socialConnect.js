@@ -96,12 +96,22 @@ function getServiceContext() {
 }
 
 /**
+ * Return the active network only when Social Connect has a known contract address.
+ */
+function getSupportedNetwork() {
+  const network = process.env.CELO_NETWORK;
+  if (network === "mainnet" || network === "alfajores") {
+    return network;
+  }
+  return null;
+}
+
+/**
  * Get the FederatedAttestations contract address for the current network.
  */
 function getFederatedAttestationsAddress() {
-  return process.env.CELO_NETWORK === "mainnet"
-    ? FEDERATED_ATTESTATIONS_ADDRESS.mainnet
-    : FEDERATED_ATTESTATIONS_ADDRESS.alfajores;
+  const network = getSupportedNetwork();
+  return network ? FEDERATED_ATTESTATIONS_ADDRESS[network] : null;
 }
 
 /**
@@ -134,6 +144,14 @@ async function resolveSocialIdentifier(identifier) {
   }
 
   // ── Step 2: ODIS on-chain lookup ──
+  const contractAddress = getFederatedAttestationsAddress();
+  if (!contractAddress) {
+    console.warn(
+      `[SocialConnect] Unsupported network "${process.env.CELO_NETWORK}" — no FederatedAttestations address. Returning NOT_RESOLVED.`
+    );
+    return { status: "NOT_RESOLVED", address: null };
+  }
+
   // Guard: ensure ODIS credentials are configured
   if (!process.env.ODIS_ISSUER_ADDRESS || !process.env.ODIS_ISSUER_PRIVATE_KEY) {
     console.warn("[SocialConnect] ODIS credentials not configured. Skipping on-chain lookup.");
@@ -165,8 +183,6 @@ async function resolveSocialIdentifier(identifier) {
     console.log("[SocialConnect] Obfuscated identifier obtained, querying FederatedAttestations...");
 
     // ── Step 3: Query FederatedAttestations contract via Viem ──
-    const contractAddress = getFederatedAttestationsAddress();
-
     const result = await publicClient.readContract({
       address: contractAddress,
       abi: FEDERATED_ATTESTATIONS_ABI,
@@ -216,4 +232,8 @@ async function resolveSocialIdentifier(identifier) {
   }
 }
 
-module.exports = { resolveSocialIdentifier };
+module.exports = {
+  resolveSocialIdentifier,
+  getSupportedNetwork,
+  getFederatedAttestationsAddress,
+};

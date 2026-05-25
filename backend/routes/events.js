@@ -1402,6 +1402,23 @@ function getStartBracketGuardError(event, brackets) {
   return null;
 }
 
+async function applyMinorityPenalty(eventId, voterAddress, options = {}) {
+  const db = options.supabase || supabase;
+  const loadReputation = options.getRegeneratedReputation || getRegeneratedReputation;
+
+  const currentHp = (await loadReputation(voterAddress)).current_hp;
+  const newScore = Math.max(0, currentHp - 10);
+
+  await db.from("reputation_tracking").insert({
+    wallet_address: voterAddress,
+    event_id: eventId,
+    was_minority: true,
+    reputation_score: newScore,
+  });
+
+  return newScore;
+}
+
 // ──────────────────────────────────────────────
 //  Consensus Resolution Helper
 // ──────────────────────────────────────────────
@@ -1453,24 +1470,7 @@ async function resolveConsensus(eventId, isTimeout = false) {
     );
 
     for (const v of minorityVoters) {
-      // Check existing reputation
-      const { data: existing } = await supabase
-        .from("reputation_tracking")
-        .select("reputation_score")
-        .eq("wallet_address", v.voter_address)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      const currentScore = existing?.reputation_score ?? 100;
-      const newScore = Math.max(0, currentScore - 10);
-
-      await supabase.from("reputation_tracking").insert({
-        wallet_address: v.voter_address,
-        event_id: eventId,
-        was_minority: true,
-        reputation_score: newScore,
-      });
+      await applyMinorityPenalty(eventId, v.voter_address);
     }
   }
 }
@@ -1586,3 +1586,4 @@ module.exports.resolveConsensus = resolveConsensus;
 module.exports.settleEvent = settleEvent;
 module.exports.authorizeRetrySettlement = authorizeRetrySettlement;
 module.exports.getStartBracketGuardError = getStartBracketGuardError;
+module.exports.applyMinorityPenalty = applyMinorityPenalty;

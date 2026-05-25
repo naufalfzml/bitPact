@@ -180,7 +180,7 @@ export default function VotingConsolePage() {
         <div>
           {/* Minority Penalty Warning Banner */}
           <div className="bp-penalty-warning">
-            ■ WARNING: MEMILIH DI MINORITAS AKAN MENGURANGI 10 HP REPUTASI ANDA ■
+            ■ WARNING: PENALTI -10 HP HANYA BERLAKU JIKA HASIL AKHIR >=85% SEPIHAK DAN ANDA BERADA DI PIHAK MINORITAS ■
           </div>
 
           {!isParticipant ? (

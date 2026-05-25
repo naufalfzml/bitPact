@@ -1,19 +1,19 @@
-# ■ bitPatch — 8-Bit Web3 Tournaments on Celo ■
+# ■ bitPact — 8-Bit Web3 Tournaments on Celo ■
 
-bitPatch adalah platform turnamen terdesentralisasi (greenfield) dengan estetika retro 8-bit murni yang dikembangkan untuk Opera MiniPay di jaringan blockchain Celo. Platform ini memungkinkan pembuatan turnamen nyata (real-life matches) seperti PvP 1v1, Team Matches, atau Free-For-All (FFA) dengan escrow hadiah cUSD yang sepenuhnya aman, otomatis, dan transparan berbasis konsensus pemain.
+bitPact adalah platform turnamen terdesentralisasi (greenfield) dengan estetika retro 8-bit murni yang dikembangkan untuk Opera MiniPay di jaringan blockchain Celo. Platform ini memungkinkan pembuatan turnamen nyata (real-life matches) seperti PvP 1v1, Team Matches, atau Free-For-All (FFA) dengan escrow hadiah USDC yang sepenuhnya aman, otomatis, dan transparan berbasis konsensus pemain.
 
 ---
 
 ## 🛠️ Alamat-Alamat Kontrak & Konfigurasi Jaringan (Contract Addresses)
 
-Untuk mempermudah koordinasi, berikut adalah alamat token dan smart contract resmi yang terkonfigurasi di ekosistem bitPatch:
+Untuk mempermudah koordinasi, berikut adalah alamat token dan smart contract resmi yang terkonfigurasi di ekosistem bitPact:
 
-### 1. Token cUSD (Stablecoin Celo)
+### 1. Token USDC (Stablecoin Celo)
 * **Celo Mainnet (Official Address)**: `0x765DE816845861e75A25fCA122bb6898B8B1282a`
 * **Celo Sepolia / Alfajores Testnet Address**: `0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1`
 
-### 2. bitPatch Vault Smart Contract (`BitPatchVault.sol`)
-* **Fungsi**: Escrow buta (blind escrow) untuk menampung deposit tiket masuk cUSD peserta, mendistribusikan hadiah ke multi-pemenang, atau memicu pengembalian dana darurat (emergency refund) 100% jika suara konsensus menolak keputusan juri.
+### 2. bitPact Vault Smart Contract (`BitPatchVault.sol`)
+* **Fungsi**: Escrow buta (blind escrow) untuk menampung deposit tiket masuk USDC peserta, mendistribusikan hadiah ke multi-pemenang, atau memicu pengembalian dana darurat (emergency refund) 100% jika suara konsensus menolak keputusan juri.
 * **Alamat Kontrak Terdeploy (Celo Mainnet)**: `0xC2375c25f402e83ce2b6F148146D6A8b47c0e62F`
 
 ### 3. Backend Admin Wallet
@@ -27,7 +27,7 @@ Untuk mempermudah koordinasi, berikut adalah alamat token dan smart contract res
 Proyek ini terbagi menjadi tiga sub-direktori utama yang sangat rapi:
 
 * **`/contracts` (Solidity & Foundry)**:
-  * Smart contract `BitPatchVault.sol` untuk blind escrow cUSD.
+  * Smart contract `BitPatchVault.sol` untuk blind escrow USDC.
   * Unit test suite fungsional penuh di `BitPatchVault.t.sol` (**21/21 passed**).
 * **`/backend` (Express.js & Supabase)**:
   * REST API server untuk pendaftaran, inisialisasi tanding, dynamic brackets generator, foto audit, appeal, dan monitoring status.
@@ -51,7 +51,7 @@ forge test -vvv
 
 ### 2. Inisiasi Database & Backend API
 1. Buat database baru di Supabase Cloud Dashboard.
-2. Salin isi berkas DDL SQL di [`backend/db/schema.sql`](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/backend/db/schema.sql) dan eksekusi di menu **SQL Editor** Supabase.
+2. Salin isi berkas DDL SQL di `backend/db/schema.sql` dan eksekusi di menu **SQL Editor** Supabase.
 3. Buat berkas `backend/.env` mengikuti `backend/.env.example`.
 4. Jalankan server:
    ```bash
@@ -74,12 +74,12 @@ forge test -vvv
 
 ## 📜 Panduan Lengkap Dokumentasi (Documentation Suite)
 
-Seluruh spesifikasi arsitektur teknis lengkap bitPatch telah didokumentasikan secara rinci di direktori `/docs`:
-* [**`docs/README.md`**](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/README.md) - Pintu gerbang indeks dokumentasi.
-* [**`docs/ARCHITECTURE.md`**](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/ARCHITECTURE.md) - Diagram Mermaid sekuensial & mesin state.
-* [**`docs/SMART-CONTRACT.md`**](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/SMART-CONTRACT.md) - Referensi API smart contract.
-* [**`docs/DATABASE.md`**](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/DATABASE.md) - Skema DDL tabel Supabase.
-* [**`docs/API.md`**](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/API.md) - Spesifikasi endpoint REST API backend.
-* [**`docs/GAME-MODES.md`**](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/GAME-MODES.md) - Algoritma penentuan bagan bracket 1v1 & Team.
-* [**`docs/CONSENSUS.md`**](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/CONSENSUS.md) - Aturan konsensus kuorum & reputasi Minority Penalty.
-* [**`docs/SETUP.md`**](file:///Users/ibanana/Documents/coding/coding_my/web3/celo-workshop/workshop-project/docs/SETUP.md) - Panduan instalasi dan Celo MCP Server integration.
+Seluruh spesifikasi arsitektur teknis lengkap bitPact telah didokumentasikan secara ringkas di direktori `/docs`:
+* `docs/README.md` - Pintu gerbang indeks dokumentasi.
+* `docs/ARCHITECTURE.md` - *(belum tersedia)* Diagram Mermaid sekuensial & mesin state.
+* `docs/SMART-CONTRACT.md` - *(belum tersedia)* Referensi API smart contract.
+* `docs/DATABASE.md` - *(belum tersedia)* Skema DDL tabel Supabase.
+* `docs/API.md` - *(belum tersedia)* Spesifikasi endpoint REST API backend.
+* `docs/GAME-MODES.md` - *(belum tersedia)* Algoritma penentuan bagan bracket 1v1 & Team.
+* `docs/CONSENSUS.md` - *(belum tersedia)* Aturan konsensus kuorum & reputasi Minority Penalty.
+* `docs/SETUP.md` - *(belum tersedia)* Panduan instalasi dan Celo MCP Server integration.

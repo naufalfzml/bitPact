@@ -11,7 +11,7 @@ interface Event {
   team_size: number;
   ticket_price: string;
   status: "setup" | "active" | "voting" | "ended" | "disputed";
-  access_type?: "password" | "invite_only";
+  access_type?: "public" | "password" | "invite_only";
   participant_count: number;
   created_at: string;
 }
