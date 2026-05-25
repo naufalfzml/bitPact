@@ -1,6 +1,6 @@
 ## Why
 
-Platform bitPatch saat ini menggunakan pustaka Ethers.js pada backend, yang sudah didepresiasi oleh Celo Foundation untuk pengembangan DApp baru. Selain itu, pendaftaran dan pencarian peserta masih sepenuhnya bergantung pada alamat wallet 0x yang rumit, sehingga kurang ramah bagi pengguna awam di dunia nyata. Migrasi backend ke Viem (pustaka standar Celo Composer) dan pengintegrasian protokol Social Connect (ODIS) Celo akan meningkatkan performa backend, menyelaraskan tipe data Web3 di seluruh tumpukan teknologi, dan menyajikan fitur pencarian peserta yang revolusioner menggunakan nomor telepon atau email.
+Platform bitPact saat ini menggunakan pustaka Ethers.js pada backend, yang sudah didepresiasi oleh Celo Foundation untuk pengembangan DApp baru. Selain itu, pendaftaran dan pencarian peserta masih sepenuhnya bergantung pada alamat wallet 0x yang rumit, sehingga kurang ramah bagi pengguna awam di dunia nyata. Migrasi backend ke Viem (pustaka standar Celo Composer) dan pengintegrasian protokol Social Connect (ODIS) Celo akan meningkatkan performa backend, menyelaraskan tipe data Web3 di seluruh tumpukan teknologi, dan menyajikan fitur pencarian peserta yang revolusioner menggunakan nomor telepon atau email.
 
 ## What Changes
 

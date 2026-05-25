@@ -8,7 +8,7 @@ import { RainbowKitProvider, getDefaultConfig } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
 
 const config = getDefaultConfig({
-  appName: "bitPatch",
+  appName: "bitPact",
   projectId: "a6873523dfdbd96e5eb9816035105e1d", // A generic valid/placeholder Project ID for development
   chains: [celoSepolia, celoAlfajores, celo],
   ssr: true,
@@ -35,7 +35,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       const ethereum = (window as any).ethereum;
       if (ethereum?.isMiniPay) {
         setIsMiniPay(true);
-        console.log("[bitPatch] MiniPay browser detected — mobile-first mode activated");
+        console.log("[bitPact] MiniPay browser detected — mobile-first mode activated");
       }
     }
   }, []);

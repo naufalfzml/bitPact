@@ -7,7 +7,7 @@ dihitung dari base reputasi usang, bukan HP saat ini (M2); peringatan di halaman
 menyesatkan karena penalti sebenarnya hanya berlaku pada supermajority ≥85% (M4); Social
 Connect menembak alamat kontrak Alfajores saat berjalan di Celo Sepolia (M3); dan
 `.env.example`/docs sudah drift (alamat token lama, tautan absolut `/Users/ibanana/...`,
-nama bitPatch/bitPact & cUSD/USDC tak konsisten) (L1–L3). Semua bisa diperbaiki tanpa
+nama bitPact/bitPact & cUSD/USDC tak konsisten) (L1–L3). Semua bisa diperbaiki tanpa
 menyentuh smart contract dan tanpa migrasi schema.
 
 ## What Changes
@@ -40,7 +40,7 @@ menyentuh smart contract dan tanpa migrasi schema.
     sehingga tidak ada tautan rusak/mesin-spesifik.
   - **L3** Konsistensi nama: standarkan prosa & config ke **bitPact** dan **USDC** di
     `docs/README.md`, `README.md`, `PROJECT_OVERVIEW.md`. Identifier kode kontrak
-    `BitPatchVault` TIDAK diubah (lihat Non-Goals).
+    `BitPactVault` TIDAK diubah (lihat Non-Goals).
 
 ## Capabilities
 

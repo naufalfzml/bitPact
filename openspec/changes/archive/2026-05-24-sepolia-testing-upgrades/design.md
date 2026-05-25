@@ -1,6 +1,6 @@
 ## Context
 
-bitPact is an 8-bit retro pixel art-styled, Web3-powered esports tournament and campaign organizer. The smart contract `BitPatchVault.sol` is deployed on the Celo Sepolia Testnet (`0xC2375c25f402e83ce2b6F148146D6A8b47c0e62F`). 
+bitPact is an 8-bit retro pixel art-styled, Web3-powered esports tournament and campaign organizer. The smart contract `BitPactVault.sol` is deployed on the Celo Sepolia Testnet (`0xC2375c25f402e83ce2b6F148146D6A8b47c0e62F`). 
 
 Following extensive local testing on Celo Sepolia, multiple critical security risks, logical loopholes in tournament flow, consensus blockages, and UX shortcomings have been identified:
 1. **Security Vulnerability**: Participants can bypass on-chain ticket payment. Frontend registers the participant in the database immediately after a transaction hash is generated without waiting for confirmation. If the transaction fails, they remain registered off-chain.
@@ -21,7 +21,7 @@ This technical design outlines the exact architectural, database, and smart cont
 
 ### Non-Goals
 - Migrating to other testnets (Alfajores) or Mainnet. This upgrade remains strictly on Celo Sepolia.
-- Modifying the core `BitPatchVault.sol` smart contract (distribution relies on the existing contract's escrow, and our backend/frontend upgrades will safely drive the parameters without requiring contract redeployments).
+- Modifying the core `BitPactVault.sol` smart contract (distribution relies on the existing contract's escrow, and our backend/frontend upgrades will safely drive the parameters without requiring contract redeployments).
 - Implementing complete automatic email notifications for invite-only events.
 
 ## Decisions

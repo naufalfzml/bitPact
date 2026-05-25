@@ -7,7 +7,7 @@ const { parseUnits } = require("viem");
 // These tests reproduce, line-for-line, how routes/events.js > resolveConsensus
 // computes the prize pool and per-winner shares, then compare the result to the
 // amount the vault ACTUALLY holds. The contract requires sum(shares) === prizePool;
-// any divergence reverts with SharesMismatch (see contracts/test/BitPatchVaultFlow.t.sol).
+// any divergence reverts with SharesMismatch (see contracts/test/BitPactVaultFlow.t.sol).
 
 const USDC_DECIMALS = 6;
 

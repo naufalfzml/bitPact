@@ -232,7 +232,7 @@ network `sepolia` → query ke alamat/chain salah.
   `openspec/specs/usdc-integration`.
 - **L2** `docs/README.md`: ganti tautan absolut `/Users/ibanana/...` jadi relatif, dan
   buat/hapus referensi file dok yang belum ada (`ARCHITECTURE.md`, `SMART-CONTRACT.md`, dst).
-- **L3** Konsistensi nama: bitPatch vs bitPact dan cUSD/USDm/USDC di seluruh teks.
+- **L3** Konsistensi nama: branding bitPact dan istilah cUSD/USDm/USDC di seluruh teks.
 
 ---
 

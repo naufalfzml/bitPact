@@ -1,6 +1,6 @@
 ## Why
 
-Saat ini, bitPatch masih memperbolehkan pembuatan turnamen dengan tipe akses "Public". Namun, demi menjaga keintiman dan eksklusivitas kompetisi komunitas retro di bitPact, seluruh turnamen diubah menjadi privat (baik dilindungi password atau khusus undangan). 
+Saat ini, bitPact masih memperbolehkan pembuatan turnamen dengan tipe akses "Public". Namun, demi menjaga keintiman dan eksklusivitas kompetisi komunitas retro di bitPact, seluruh turnamen diubah menjadi privat (baik dilindungi password atau khusus undangan). 
 
 Selain itu, saat membuat turnamen tipe "Invite-Only", kreator masih harus memasukkan alamat wallet secara manual yang sangat merepotkan. Dengan mengintegrasikan Social Connect (mock ODIS resolver), kreator dapat dengan mudah mengundang peserta hanya dengan memasukkan nomor telepon atau email mereka, yang secara otomatis akan diterjemahkan menjadi alamat wallet Celo tujuan.
 

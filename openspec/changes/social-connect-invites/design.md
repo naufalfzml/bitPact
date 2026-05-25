@@ -1,6 +1,6 @@
 ## Context
 
-Saat ini, bitPatch membolehkan pembuatan turnamen tipe "Public" yang bertentangan dengan kebutuhan keintiman komunitas. Selain itu, fitur "Invite-Only" yang ada sangat merepotkan karena kreator harus menyalin alamat wallet Celo heksadesimal 42 karakter (0x) satu per satu secara manual.
+Saat ini, bitPact membolehkan pembuatan turnamen tipe "Public" yang bertentangan dengan kebutuhan keintiman komunitas. Selain itu, fitur "Invite-Only" yang ada sangat merepotkan karena kreator harus menyalin alamat wallet Celo heksadesimal 42 karakter (0x) satu per satu secara manual.
 
 Untuk mengatasinya:
 1. Kita akan menghapus tipe akses "Public", sehingga turnamen hanya bertipe "Password" atau "Invite-Only".
@@ -15,7 +15,7 @@ Untuk mengatasinya:
 
 **Non-Goals:**
 - Mengintegrasikan ODIS SDK rilisan Celo secara on-chain langsung pada tahap ini (kita akan menggunakan Mock ODIS Service berbasis Supabase `social_mappings` yang sudah diimplementasikan di `/backend/lib/socialConnect.js`).
-- Mengubah fungsi atau logika on-chain di smart contract `BitPatchVault.sol`.
+- Mengubah fungsi atau logika on-chain di smart contract `BitPactVault.sol`.
 
 ## Decisions
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
-import {BitPatchVault} from "../src/BitPatchVault.sol";
+import {BitPactVault} from "../src/BitPactVault.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /// @dev Minimal mock cUSD token for testing
@@ -14,8 +14,8 @@ contract MockCUSD is ERC20 {
     }
 }
 
-contract BitPatchVaultTest is Test {
-    BitPatchVault public vault;
+contract BitPactVaultTest is Test {
+    BitPactVault public vault;
     MockCUSD public token;
 
     address admin = address(0xAD);
@@ -30,7 +30,7 @@ contract BitPatchVaultTest is Test {
 
     function setUp() public {
         token = new MockCUSD();
-        vault = new BitPatchVault(admin, address(token));
+        vault = new BitPactVault(admin, address(token));
 
         // Mint cUSD to participants
         token.mint(alice, 100 ether);
@@ -76,14 +76,14 @@ contract BitPatchVaultTest is Test {
 
     function test_createEvent_revertNonAdmin() public {
         vm.prank(alice);
-        vm.expectRevert(BitPatchVault.OnlyAdmin.selector);
+        vm.expectRevert(BitPactVault.OnlyAdmin.selector);
         vault.createEvent(eventId, ticketPrice, creator);
     }
 
     function test_createEvent_revertDuplicate() public {
         vm.startPrank(admin);
         vault.createEvent(eventId, ticketPrice, creator);
-        vm.expectRevert(BitPatchVault.EventAlreadyExists.selector);
+        vm.expectRevert(BitPactVault.EventAlreadyExists.selector);
         vault.createEvent(eventId, ticketPrice, creator);
         vm.stopPrank();
     }
@@ -127,13 +127,13 @@ contract BitPatchVaultTest is Test {
         vault.register(eventId);
 
         vm.prank(alice);
-        vm.expectRevert(BitPatchVault.AlreadyRegistered.selector);
+        vm.expectRevert(BitPactVault.AlreadyRegistered.selector);
         vault.register(eventId);
     }
 
     function test_register_revertEventNotFound() public {
         vm.prank(alice);
-        vm.expectRevert(BitPatchVault.EventNotFound.selector);
+        vm.expectRevert(BitPactVault.EventNotFound.selector);
         vault.register(keccak256("nonexistent"));
     }
 
@@ -151,7 +151,7 @@ contract BitPatchVaultTest is Test {
 
         // Attempt register after distribution
         vm.prank(alice);
-        vm.expectRevert(BitPatchVault.EventAlreadyDistributed.selector);
+        vm.expectRevert(BitPactVault.EventAlreadyDistributed.selector);
         vault.register(eventId);
     }
 
@@ -209,7 +209,7 @@ contract BitPatchVaultTest is Test {
         shares[0] = ticketPrice * 4;
 
         vm.prank(alice);
-        vm.expectRevert(BitPatchVault.OnlyAdmin.selector);
+        vm.expectRevert(BitPactVault.OnlyAdmin.selector);
         vault.distributePrize(eventId, winners, shares);
     }
 
@@ -222,7 +222,7 @@ contract BitPatchVaultTest is Test {
         shares[0] = ticketPrice * 3; // wrong: should be 4 * ticketPrice
 
         vm.prank(admin);
-        vm.expectRevert(BitPatchVault.SharesMismatch.selector);
+        vm.expectRevert(BitPactVault.SharesMismatch.selector);
         vault.distributePrize(eventId, winners, shares);
     }
 
@@ -237,7 +237,7 @@ contract BitPatchVaultTest is Test {
         vm.startPrank(admin);
         vault.distributePrize(eventId, winners, shares);
 
-        vm.expectRevert(BitPatchVault.EventAlreadyDistributed.selector);
+        vm.expectRevert(BitPactVault.EventAlreadyDistributed.selector);
         vault.distributePrize(eventId, winners, shares);
         vm.stopPrank();
     }
@@ -249,7 +249,7 @@ contract BitPatchVaultTest is Test {
         uint256[] memory shares = new uint256[](0);
 
         vm.prank(admin);
-        vm.expectRevert(BitPatchVault.EmptyWinners.selector);
+        vm.expectRevert(BitPactVault.EmptyWinners.selector);
         vault.distributePrize(eventId, winners, shares);
     }
 
@@ -263,7 +263,7 @@ contract BitPatchVaultTest is Test {
         shares[0] = ticketPrice * 4;
 
         vm.prank(admin);
-        vm.expectRevert(BitPatchVault.LengthMismatch.selector);
+        vm.expectRevert(BitPactVault.LengthMismatch.selector);
         vault.distributePrize(eventId, winners, shares);
     }
 
@@ -295,7 +295,7 @@ contract BitPatchVaultTest is Test {
         _createAndRegisterFourParticipants();
 
         vm.prank(alice);
-        vm.expectRevert(BitPatchVault.OnlyAdmin.selector);
+        vm.expectRevert(BitPactVault.OnlyAdmin.selector);
         vault.emergencyRefund(eventId);
     }
 
@@ -311,7 +311,7 @@ contract BitPatchVaultTest is Test {
         vm.startPrank(admin);
         vault.distributePrize(eventId, winners, shares);
 
-        vm.expectRevert(BitPatchVault.EventAlreadyDistributed.selector);
+        vm.expectRevert(BitPactVault.EventAlreadyDistributed.selector);
         vault.emergencyRefund(eventId);
         vm.stopPrank();
     }
@@ -321,7 +321,7 @@ contract BitPatchVaultTest is Test {
     // ──────────────────────────────────────────────
 
     function test_getEventInfo_revertNotFound() public {
-        vm.expectRevert(BitPatchVault.EventNotFound.selector);
+        vm.expectRevert(BitPactVault.EventNotFound.selector);
         vault.getEventInfo(keccak256("nonexistent"));
     }
 

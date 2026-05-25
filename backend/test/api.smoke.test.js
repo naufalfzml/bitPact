@@ -24,7 +24,7 @@ before(async () => {
   app.use("/api/reputation", require("../routes/reputation"));
   app.use("/api/social-connect", require("../routes/socialConnect"));
   app.get("/api/health", (_req, res) =>
-    res.json({ status: "ok", service: "bitpatch-backend" })
+    res.json({ status: "ok", service: "bitpact-backend" })
   );
 
   await new Promise((resolve) => {

@@ -40,7 +40,7 @@ const walletClient = createWalletClient({
   transport: http(process.env.CELO_RPC_URL),
 });
 
-// BitPatchVault ABI (only the functions we call from backend)
+// BitPactVault ABI (only the functions we call from backend)
 const VAULT_ABI = parseAbi([
   "function createEvent(bytes32 eventId, uint256 ticketPrice, address creator) external",
   "function distributePrize(bytes32 eventId, address[] calldata winners, uint256[] calldata shares) external",

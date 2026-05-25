@@ -4,13 +4,13 @@
 TBD - created by archiving change usdc-integration. Update Purpose after archive.
 ## Requirements
 ### Requirement: Integrasi Alamat Kontrak USDC Native Circle
-Kontrak `BitPatchVault` dan seluruh konfigurasi environment (`backend/.env` dan `frontend/.env.local`) SHALL/MUST dikonfigurasi menggunakan alamat kontrak native USDC resmi dari Circle untuk ekosistem Celo:
+Kontrak `BitPactVault` dan seluruh konfigurasi environment (`backend/.env` dan `frontend/.env.local`) SHALL/MUST dikonfigurasi menggunakan alamat kontrak native USDC resmi dari Circle untuk ekosistem Celo:
 - **Celo Sepolia Testnet**: `0x01C5C0122039549AD1493B8220cABEdD739BC44E`
 - **Celo Mainnet**: `0xcebA9300f2b948710d2653dD7B07f33A8B32118C`
 
 #### Scenario: Deployment Kontrak Vault Sukses dengan USDC Native
 - **WHEN** skrip deployment `Deploy.s.sol` dijalankan pada testnet Celo Sepolia
-- **THEN** sistem men-deploy kontrak `BitPatchVault` yang valid dengan menyematkan alamat resmi USDC Sepolia (`0x01C5C0122039549AD1493B8220cABEdD739BC44E`) sebagai konstruktor token stablecoin
+- **THEN** sistem men-deploy kontrak `BitPactVault` yang valid dengan menyematkan alamat resmi USDC Sepolia (`0x01C5C0122039549AD1493B8220cABEdD739BC44E`) sebagai konstruktor token stablecoin
 - **AND** file `.env` diisi dengan alamat kontrak vault baru tersebut secara akurat
 
 ---

@@ -45,7 +45,7 @@ export default function HomePage() {
     <div>
       {/* Hero Section */}
       <section className="bp-hero">
-        <h1 className="bp-hero-title bp-pulse">bitPatch</h1>
+        <h1 className="bp-hero-title bp-pulse">bitPact</h1>
         <p className="bp-hero-subtitle">
           Pixel-accurate, decentralized 8-bit retro gaming tournament platform. Hold escrows, manage brackets, and vote on consensus via Celo USDC.
         </p>

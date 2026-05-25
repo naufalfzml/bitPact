@@ -26,7 +26,7 @@
 - [x] 5.1 `backend/.env.example`: ubah komentar menjadi `CELO_NETWORK=sepolia # atau mainnet / alfajores` (sesuai default kode di [blockchain.js:17](../../../backend/lib/blockchain.js#L17))
 - [x] 5.2 `backend/.env.example`: rename `CUSD_TOKEN_ADDRESS` → `USDC_TOKEN_ADDRESS` dengan nilai USDC Sepolia `0x01C5C0122039549AD1493B8220cABEdD739BC44E` (var hanya dokumentasi; tidak dibaca kode)
 - [x] 5.3 `docs/README.md`: ganti semua tautan absolut `file:///Users/ibanana/...` ke dok yang belum ada menjadi penanda `(belum tersedia)` tanpa hyperlink rusak
-- [x] 5.4 Konsistensi nama: standarkan prosa ke **bitPact** dan istilah mata uang ke **USDC** di `docs/README.md`, `README.md`, `PROJECT_OVERVIEW.md` (JANGAN mengubah identifier kode `BitPatchVault`)
+- [x] 5.4 Konsistensi nama: standarkan prosa ke **bitPact** dan istilah mata uang ke **USDC** di `docs/README.md`, `README.md`, `PROJECT_OVERVIEW.md` (JANGAN mengubah identifier kode `BitPactVault`)
 
 ## 6. Test — jaga 69 test hijau + tambah unit test F7 & F8
 

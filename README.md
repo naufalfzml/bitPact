@@ -12,7 +12,7 @@ Untuk mempermudah koordinasi, berikut adalah alamat token dan smart contract res
 * **Celo Mainnet (Official Address)**: `0x765DE816845861e75A25fCA122bb6898B8B1282a`
 * **Celo Sepolia / Alfajores Testnet Address**: `0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1`
 
-### 2. bitPact Vault Smart Contract (`BitPatchVault.sol`)
+### 2. bitPact Vault Smart Contract (`BitPactVault.sol`)
 * **Fungsi**: Escrow buta (blind escrow) untuk menampung deposit tiket masuk USDC peserta, mendistribusikan hadiah ke multi-pemenang, atau memicu pengembalian dana darurat (emergency refund) 100% jika suara konsensus menolak keputusan juri.
 * **Alamat Kontrak Terdeploy (Celo Mainnet)**: `0xC2375c25f402e83ce2b6F148146D6A8b47c0e62F`
 
@@ -27,8 +27,8 @@ Untuk mempermudah koordinasi, berikut adalah alamat token dan smart contract res
 Proyek ini terbagi menjadi tiga sub-direktori utama yang sangat rapi:
 
 * **`/contracts` (Solidity & Foundry)**:
-  * Smart contract `BitPatchVault.sol` untuk blind escrow USDC.
-  * Unit test suite fungsional penuh di `BitPatchVault.t.sol` (**21/21 passed**).
+  * Smart contract `BitPactVault.sol` untuk blind escrow USDC.
+  * Unit test suite fungsional penuh di `BitPactVault.t.sol` (**21/21 passed**).
 * **`/backend` (Express.js & Supabase)**:
   * REST API server untuk pendaftaran, inisialisasi tanding, dynamic brackets generator, foto audit, appeal, dan monitoring status.
   * Node-cron schedule task untuk auto-abstain 24 jam dan penyelesaian konsensus otomatis.

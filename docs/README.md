@@ -45,7 +45,7 @@ Gunakan daftar di bawah ini untuk menavigasi dokumen referensi teknis bitPact se
 * 🏗️ **System Architecture** (`ARCHITECTURE.md`) *(belum tersedia)*  
   *Arsitektur tingkat tinggi dan detail interaksi komponen (Wagmi, Express, Supabase, Celo).*
 * 📄 **Smart Contract Reference** (`SMART-CONTRACT.md`) *(belum tersedia)*  
-  *Panduan lengkap variabel, fungsi `register()`, `distributePrize()`, dan `emergencyRefund()` pada `BitPatchVault.sol`.*
+  *Panduan lengkap variabel, fungsi `register()`, `distributePrize()`, dan `emergencyRefund()` pada `BitPactVault.sol`.*
 * 💾 **Database Schema Guide** (`DATABASE.md`) *(belum tersedia)*  
   *Skema SQL DDL Supabase PostgreSQL untuk tabel events, participants, votes, dan brackets.*
 * 🛣️ **Backend API Reference** (`API.md`) *(belum tersedia)*  

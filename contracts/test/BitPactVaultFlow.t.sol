@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
-import {BitPatchVault} from "../src/BitPatchVault.sol";
+import {BitPactVault} from "../src/BitPactVault.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /// @dev Mock USDC with 6 decimals (mirrors native Circle USDC on Celo)
@@ -18,7 +18,7 @@ contract MockUSDC is ERC20 {
     }
 }
 
-/// @title BitPatchVault — End-to-End Lifecycle & Backend-Invariant Tests
+/// @title BitPactVault — End-to-End Lifecycle & Backend-Invariant Tests
 /// @notice These tests model the *real* off-chain → on-chain flow the backend
 ///         performs (createEvent → register → distribute/refund) and pin down
 ///         the economic invariant the Express backend must respect:
@@ -31,8 +31,8 @@ contract MockUSDC is ERC20 {
 ///         prizePool. Any divergence between DB rows and real depositors
 ///         makes distributePrize revert. The phantom-participant test below
 ///         reproduces that exact failure.
-contract BitPatchVaultFlowTest is Test {
-    BitPatchVault public vault;
+contract BitPactVaultFlowTest is Test {
+    BitPactVault public vault;
     MockUSDC public usdc;
 
     address admin = address(0xAD);
@@ -47,7 +47,7 @@ contract BitPatchVaultFlowTest is Test {
 
     function setUp() public {
         usdc = new MockUSDC();
-        vault = new BitPatchVault(admin, address(usdc));
+        vault = new BitPactVault(admin, address(usdc));
 
         address[4] memory players = [alice, bob, carol, dave];
         for (uint256 i; i < players.length; ++i) {
@@ -147,7 +147,7 @@ contract BitPatchVaultFlowTest is Test {
         shares[0] = backendPool;
 
         vm.prank(admin);
-        vm.expectRevert(BitPatchVault.SharesMismatch.selector);
+        vm.expectRevert(BitPactVault.SharesMismatch.selector);
         vault.distributePrize(eventId, winners, shares);
 
         // Funds remain trapped: pool still full, event not distributed.

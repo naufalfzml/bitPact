@@ -2,16 +2,16 @@
 pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
-import {BitPatchVault} from "../src/BitPatchVault.sol";
+import {BitPactVault} from "../src/BitPactVault.sol";
 
-/// @title Deploy BitPatchVault to Celo Alfajores Testnet
+/// @title Deploy BitPactVault to Celo Alfajores Testnet
 /// @dev   Usage:
-///        forge script script/Deploy.s.sol:DeployBitPatchVault \
+///        forge script script/Deploy.s.sol:DeployBitPactVault \
 ///          --rpc-url $CELO_RPC_URL \
 ///          --broadcast \
 ///          --private-key $DEPLOYER_PRIVATE_KEY \
 ///          -vvvv
-contract DeployBitPatchVault is Script {
+contract DeployBitPactVault is Script {
     // Celo Alfajores Testnet cUSD token address
     address constant CUSD_ALFAJORES = 0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1;
 
@@ -23,8 +23,8 @@ contract DeployBitPatchVault is Script {
 
         vm.startBroadcast();
 
-        BitPatchVault vault = new BitPatchVault(adminWallet, cUSDToken);
-        console.log("BitPatchVault deployed at:", address(vault));
+        BitPactVault vault = new BitPactVault(adminWallet, cUSDToken);
+        console.log("BitPactVault deployed at:", address(vault));
         console.log("Admin wallet:", adminWallet);
         console.log("cUSD token:", cUSDToken);
 

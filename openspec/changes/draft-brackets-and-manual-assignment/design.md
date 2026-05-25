@@ -1,6 +1,6 @@
 ## Context
 
-Untuk meningkatkan nilai utilitas dan fleksibilitas bitPatch, alur manajemen turnamen kini diatur secara berurutan:
+Untuk meningkatkan nilai utilitas dan fleksibilitas bitPact, alur manajemen turnamen kini diatur secara berurutan:
 1. **Open Signups**: Pendaftaran terbuka bebas dengan pembatasan kuota `max_participants` (tanpa dipaksa memilih game mode di awal).
 2. **Close Signups**: Kreator menutup registrasi, menyetel `roster_locked = true`.
 3. **Select Mode & Draft Bracket**: Setelah roster terkunci, Kreator memilih format game mode asli (PvP 1v1 / Team Mode) sesuai jumlah peserta aktual, lalu merancang bagan (Auto-Shuffle atau manual dropdowns).

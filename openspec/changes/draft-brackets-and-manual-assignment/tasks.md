@@ -19,7 +19,7 @@
   - **Fase 2 (Pendaftaran Ditutup & Drafting):**
     - Menampilkan panel pemilihan Game Mode dinamis bagi Kreator jika game mode belum difinalisasi pasca-kunci.
     - Menampilkan antarmuka visual draf bagan pertandingan (Match 1, Match 2, dst.) yang berisi dropdown select retro interaktif untuk mengisi slot Pemain A dan Pemain B secara manual dari sisa peserta terdaftar.
-    - Elemen dropdown select retro tidak boleh memiliki simbol panah atau chevron (`<`, `>`, `▲`, `▼`, `→`, dll.) sesuai aturan visual bitPatch.
+    - Elemen dropdown select retro tidak boleh memiliki simbol panah atau chevron (`<`, `>`, `▲`, `▼`, `→`, dll.) sesuai aturan visual bitPact.
     - Menghubungkan tombol **■ AUTO SHUFFLE ■** di fase draf untuk mengacak seluruh peserta secara acak ke dalam slot draf bagan di database dan memperbarui UI.
     - Menghubungkan tombol **■ START EVENT ■** di fase draf untuk memfinalisasi draf bagan dan memulai turnamen secara resmi.
   - **Fase 3 (Turnamen Aktif):** Menampilkan bagan pertandingan final yang terkunci dan panel manajemen seperti sebelumnya.

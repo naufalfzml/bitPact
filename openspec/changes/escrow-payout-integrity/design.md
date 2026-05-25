@@ -7,7 +7,7 @@ lalu tetap men-set `status: "ended"`, dan (c) bergantung pada endpoint register 
 mem-bypass verifikasi on-chain saat `tx_hash === "social-connect-invite"`
 ([events.js:306-310](../../../backend/routes/events.js#L306-L310)).
 
-Kontrak `BitPatchVault` menegakkan `sum(shares) === prizePool` (revert `SharesMismatch`).
+Kontrak `BitPactVault` menegakkan `sum(shares) === prizePool` (revert `SharesMismatch`).
 ABI sudah mengekspos sumber kebenaran: `getEventInfo(bytes32) → (creator, ticketPrice,
 prizePool, distributed, participantCount)` ([blockchain.js:48](../../../backend/lib/blockchain.js#L48)).
 Pendekatan yang benar telah dibuktikan oleh Foundry
@@ -27,7 +27,7 @@ sebelumnya di `backend/migrations/`), sehingga nilai status baru butuh migrasi.
 - Semua 69 test tetap hijau kecuali yang sengaja diubah di tabel "Dampak ke test".
 
 **Non-Goals:**
-- Mengubah smart contract `BitPatchVault.sol` (read-only `getEventInfo` sudah cukup).
+- Mengubah smart contract `BitPactVault.sol` (read-only `getEventInfo` sudah cukup).
 - Menyelesaikan timeout / 0-vote (itu F5, change `consensus-timeout-resolution`).
 - Mengubah logika penalti reputasi (F7, change `reputation-penalty-accuracy`).
 - Mengubah alur lookup Social Connect itu sendiri; hanya tujuan tulisnya (whitelist).

@@ -92,7 +92,7 @@ CREATE TABLE votes (
 
 ```
 
-### 2. Arsitektur Smart Contract (BitPatchVault.sol)
+### 2. Arsitektur Smart Contract (BitPactVault.sol)
 
 Kontrak pintar bertindak sebagai *escrow* pihak ketiga yang buta untuk mengunci dana.
 
@@ -109,7 +109,7 @@ Rencana eksekusi modular ini dipecah berdasarkan fungsionalitas komponen (*Epics
 
 ### Epic 1: Fondasi On-Chain & Kontrak Vault
 
-* [ ] Tulis *smart contract* BitPatchVault.sol menggunakan Foundry.
+* [ ] Tulis *smart contract* BitPactVault.sol menggunakan Foundry.
 * [ ] Buat fungsi utama: *deposit* tiket, *payout* pemenang, dan fungsi *refund* massal.
 * [ ] Uji coba logika *escrow* menggunakan *local network* (Anvil) atau Celo Alfajores testnet.
 

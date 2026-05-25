@@ -8,8 +8,8 @@ Hasil analisis codebase + test yang ditambahkan untuk memverifikasi apakah alur
 
 | Suite | Lokasi | Jumlah | Status |
 |---|---|---|---|
-| Smart contract (unit) | `contracts/test/BitPatchVault.t.sol` | 21 | ✅ pass |
-| Smart contract (flow/E2E) | `contracts/test/BitPatchVaultFlow.t.sol` | 4 | ✅ pass |
+| Smart contract (unit) | `contracts/test/BitPactVault.t.sol` | 21 | ✅ pass |
+| Smart contract (flow/E2E) | `contracts/test/BitPactVaultFlow.t.sol` | 4 | ✅ pass |
 | Backend unit + logic | `backend/test/*.test.js` | 27 | ✅ pass |
 | Backend API smoke | `backend/test/api.smoke.test.js` | 17 | ✅ pass |
 | **Total** | | **69** | ✅ pass |
@@ -127,7 +127,7 @@ padahal penalti hanya berlaku pada supermajority ≥85%/≤15%
   bukan USDC native sesuai `openspec/specs/usdc-integration`.
 - **L2.** `docs/README.md` menaut file (`ARCHITECTURE.md`, `SMART-CONTRACT.md`, dst.) yang
   **tidak ada** di repo, dengan path absolut mesin lain (`/Users/ibanana/...`).
-- **L3.** Inkonsistensi nama: bitPatch vs bitPact (folder repo) dan cUSD/USDm/USDC.
+- **L3.** Inkonsistensi nama branding dan istilah mata uang di beberapa dokumen lama.
 
 ---
 

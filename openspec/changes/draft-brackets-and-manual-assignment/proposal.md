@@ -1,8 +1,8 @@
 ## Why
 
-Saat ini, pembuatan turnamen (*Create Tournament*) pada platform bitPatch mengharuskan Kreator menentukan mode permainan (*Game Mode*) sejak awal. Hal ini sangat membatasi kegunaan (*utility*) jika jumlah pendaftar di lapangan tidak sesuai dengan perkiraan awal (misal, merencanakan mode tim 2v2 namun jumlah pendaftar ganjil atau sedikit). 
+Saat ini, pembuatan turnamen (*Create Tournament*) pada platform bitPact mengharuskan Kreator menentukan mode permainan (*Game Mode*) sejak awal. Hal ini sangat membatasi kegunaan (*utility*) jika jumlah pendaftar di lapangan tidak sesuai dengan perkiraan awal (misal, merencanakan mode tim 2v2 namun jumlah pendaftar ganjil atau sedikit). 
 
-Pembaruan ini memperluas nilai utilitas bitPatch secara drastis dengan memindahkan keputusan penentuan *Game Mode* ke saat pendaftaran ditutup. Saat pembuatan turnamen, Kreator hanya menentukan batas kuota maksimum peserta (*Max Participants*). Format pertandingan asli baru ditentukan secara dinamis setelah daftar pendaftar dikunci, memberikan fleksibilitas penuh untuk beradaptasi dengan turnout pendaftar.
+Pembaruan ini memperluas nilai utilitas bitPact secara drastis dengan memindahkan keputusan penentuan *Game Mode* ke saat pendaftaran ditutup. Saat pembuatan turnamen, Kreator hanya menentukan batas kuota maksimum peserta (*Max Participants*). Format pertandingan asli baru ditentukan secara dinamis setelah daftar pendaftar dikunci, memberikan fleksibilitas penuh untuk beradaptasi dengan turnout pendaftar.
 
 ## What Changes
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import ConnectButtonClient from "./components/ConnectButtonClient";
 
 export const metadata: Metadata = {
-  title: "bitPatch | 8-Bit Web3 Tournaments on Celo",
+  title: "bitPact | 8-Bit Web3 Tournaments on Celo",
   description: "A premium 8-bit retro gaming tournament platform. Hold escrows, manage PvP brackets, vote on consensus, and pay in USDC.",
 };
 
@@ -43,7 +43,7 @@ export default function RootLayout({
 
           <footer className="bp-footer">
             <div className="bp-container">
-              <p>■ bitPatch © 2026 ■</p>
+              <p>■ bitPact © 2026 ■</p>
               <p style={{ marginTop: "8px", fontSize: "0.5rem" }}>
                 PIXEL ACCURATE ESCROW • CELO NETWORK • MINIPAY READY
               </p>

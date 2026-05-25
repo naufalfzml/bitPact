@@ -1,6 +1,6 @@
 ## Context
 
-bitPatch saat ini menggunakan Ethers.js pada Express.js backend API server untuk melakukan kueri data *on-chain* dan memicu transaksi pengiriman hadiah (payouts). Di sisi lain, pendaftaran turnamen masih memerlukan input manual berupa alamat wallet 0x yang panjang dan rentan kesalahan ketik. Untuk membawa platform bitPatch ke tingkat produksi yang selaras dengan standar resmi **Celo Composer** dan **Opera MiniPay**, kita perlu memigrasikan backend ke **Viem** dan menyediakan layanan lookup peserta menggunakan identitas sosial nomor telepon/email melalui protokol **Social Connect (ODIS)**.
+bitPact saat ini menggunakan Ethers.js pada Express.js backend API server untuk melakukan kueri data *on-chain* dan memicu transaksi pengiriman hadiah (payouts). Di sisi lain, pendaftaran turnamen masih memerlukan input manual berupa alamat wallet 0x yang panjang dan rentan kesalahan ketik. Untuk membawa platform bitPact ke tingkat produksi yang selaras dengan standar resmi **Celo Composer** dan **Opera MiniPay**, kita perlu memigrasikan backend ke **Viem** dan menyediakan layanan lookup peserta menggunakan identitas sosial nomor telepon/email melalui protokol **Social Connect (ODIS)**.
 
 ## Goals / Non-Goals
 

@@ -21,7 +21,7 @@ app.use("/api/social-connect", socialConnectRouter);
 
 // Health check
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", service: "bitpatch-backend", timestamp: new Date().toISOString() });
+  res.json({ status: "ok", service: "bitpact-backend", timestamp: new Date().toISOString() });
 });
 
 // Start cron scheduler
@@ -29,5 +29,5 @@ startAutoAbstainCron();
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`bitPatch backend running on http://localhost:${PORT}`);
+  console.log(`bitPact backend running on http://localhost:${PORT}`);
 });

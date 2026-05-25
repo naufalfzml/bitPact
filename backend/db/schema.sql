@@ -1,8 +1,8 @@
 -- ============================================================
--- bitPatch — Supabase PostgreSQL Schema Migration
+-- bitPact — Supabase PostgreSQL Schema Migration
 -- ============================================================
 -- Execute this script in the Supabase SQL Editor to initialise
--- all tables, constraints, and indices required by bitPatch.
+-- all tables, constraints, and indices required by bitPact.
 -- ============================================================
 
 -- 1. Events

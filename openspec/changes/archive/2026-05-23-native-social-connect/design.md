@@ -1,11 +1,11 @@
 ## Context
 
-Saat ini, bitPatch menggunakan modul mock (`backend/lib/socialConnect.js`) untuk mensimulasikan pencarian Social Connect (email/no. telepon ke wallet Celo) dengan membaca data statis dari tabel `social_mappings` Supabase. Untuk beralih ke lingkungan produksi desentralisasi penuh, kita perlu menggunakan SDK `@celo/identity` secara asli untuk memanggil layanan ODIS (Oblivious Decentralized Identifier Service) Celo dan menanyakan mapping pada contract `FederatedAttestations` on-chain Celo.
+Saat ini, bitPact menggunakan modul mock (`backend/lib/socialConnect.js`) untuk mensimulasikan pencarian Social Connect (email/no. telepon ke wallet Celo) dengan membaca data statis dari tabel `social_mappings` Supabase. Untuk beralih ke lingkungan produksi desentralisasi penuh, kita perlu menggunakan SDK `@celo/identity` secara asli untuk memanggil layanan ODIS (Oblivious Decentralized Identifier Service) Celo dan menanyakan mapping pada contract `FederatedAttestations` on-chain Celo.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Mengintegrasikan pustaka SDK resmi `@celo/identity` pada sisi backend bitPatch.
+- Mengintegrasikan pustaka SDK resmi `@celo/identity` pada sisi backend bitPact.
 - Melakukan kueri ODIS untuk mengambil *pepper* kriptografis berdasarkan email atau nomor telepon secara aman.
 - Melakukan kueri on-chain ke smart contract `FederatedAttestations` milik Celo menggunakan Viem/Ethers (lewat dependensi Celo SDK) untuk menyelesaikan pemetaan identitas ke wallet address Celo.
 - Membangun mekanisme caching hybrid: setiap resolusi yang sukses dari ODIS akan disimpan di database lokal Supabase `social_mappings` agar pencarian selanjutnya untuk identitas yang sama dapat diselesaikan secara instan tanpa biaya gas ODIS query.
@@ -23,7 +23,7 @@ Saat ini, bitPatch menggunakan modul mock (`backend/lib/socialConnect.js`) untuk
 ### 2. Mekanisme Caching Hibrida di Supabase (`social_mappings`)
 * **Pilihan**: Kueri lookup pertama kali akan memicu ODIS on-chain, lalu hasilnya di-cache ke tabel `social_mappings` Supabase. Lookup berikutnya langsung mengambil dari database lokal.
 * **Alasan**: ODIS query di mainnet memakan biaya kuota kueri (gas/fee) dan waktu respons (1–3 detik). Dengan caching, kita mendapatkan yang terbaik dari kedua dunia: keaslian & privasi data ODIS, serta kecepatan & efisiensi biaya (0 gas fee) database tradisional.
-* **Alternatif**: Selalu melakukan kueri ke ODIS. Ini sangat mahal, boros kuota kueri, dan memperlambat UI frontend bitPatch.
+* **Alternatif**: Selalu melakukan kueri ke ODIS. Ini sangat mahal, boros kuota kueri, dan memperlambat UI frontend bitPact.
 
 ### 3. Konfigurasi Variabel Lingkungan untuk Kredensial Issuer
 * **Pilihan**: Menambahkan variabel lingkungan `.env` berikut:

@@ -1,5 +1,5 @@
 -- ============================================================
--- bitPatch — Private Events Migration
+-- bitPact — Private Events Migration
 -- ============================================================
 -- Adds access control columns to `events` table and creates
 -- a new `event_whitelist` table for invite-only tournaments.

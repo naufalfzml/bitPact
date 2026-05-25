@@ -1,7 +1,7 @@
 {
-  "name": "bitpatch-backend",
+  "name": "bitpact-backend",
   "version": "0.1.0",
-  "description": "bitPatch Express.js backend API — tournament lifecycle, consensus, and on-chain admin orchestration",
+  "description": "bitPact Express.js backend API — tournament lifecycle, consensus, and on-chain admin orchestration",
   "main": "index.js",
   "scripts": {
     "dev": "node --watch index.js",

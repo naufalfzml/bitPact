@@ -3,11 +3,11 @@ pragma solidity ^0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// @title BitPatchVault
-/// @notice Blind escrow vault for bitPatch tournament prize pools on Celo.
+/// @title BitPactVault
+/// @notice Blind escrow vault for bitPact tournament prize pools on Celo.
 ///         Holds cUSD deposits, distributes shares to winners, or refunds all participants.
 /// @dev    Only the backend admin wallet may call mutating functions (createEvent, distributePrize, emergencyRefund).
-contract BitPatchVault {
+contract BitPactVault {
     // ──────────────────────────────────────────────
     //  State
     // ──────────────────────────────────────────────

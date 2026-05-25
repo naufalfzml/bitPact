@@ -9,7 +9,7 @@ Express.js backend server API SHALL utilize Celo-native SDK Viem for on-chain co
 
 #### Scenario: Dynamic contract interaction
 - **WHEN** a tournament is ended and winners are validated
-- **THEN** the backend SHALL invoke `distributePrize` on `BitPatchVault` contract using the configured admin wallet signer via Viem's `writeContract` client
+- **THEN** the backend SHALL invoke `distributePrize` on `BitPactVault` contract using the configured admin wallet signer via Viem's `writeContract` client
 
 ### Requirement: Frontend connection SHALL auto-detect MiniPay environment
 Next.js Web3 client console SHALL explicitly query the injected provider properties to determine if the execution is running inside the Opera MiniPay browser, and optimize the connect interface accordingly.

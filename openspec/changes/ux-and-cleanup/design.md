@@ -2,7 +2,7 @@
 
 Change ini menggabungkan lima perbaikan kecil yang **independen** dan **berisiko rendah**
 (M1–M4, L1–L3 di [TESTING.md](../../../TESTING.md)). Tidak ada satu pun yang menyentuh
-smart contract `BitPatchVault`, schema DB, atau jalur escrow — sehingga aman dikerjakan
+smart contract `BitPactVault`, schema DB, atau jalur escrow — sehingga aman dikerjakan
 terpisah dari P0/P1 (`escrow-payout-integrity`, `lifecycle-completeness`).
 
 Fakta terverifikasi dari kode saat ini:
@@ -33,8 +33,8 @@ Fakta terverifikasi dari kode saat ini:
 - Seluruh **69 test** tetap hijau; tambah unit test untuk F7 & F8.
 
 **Non-Goals:**
-- TIDAK mengubah smart contract `BitPatchVault.sol`, ABI, atau alamat deploy.
-- TIDAK mengganti identifier kode `BitPatchVault` / `VAULT_CONTRACT_ADDRESS` (akan memecah
+- TIDAK mengubah smart contract `BitPactVault.sol`, ABI, atau alamat deploy.
+- TIDAK mengganti identifier kode `BitPactVault` / `VAULT_CONTRACT_ADDRESS` (akan memecah
   69 test & ABI). Cleanup nama hanya pada prosa & config dokumentasi.
 - TIDAK menambah alamat FederatedAttestations untuk Sepolia (Keputusan D3: cukup
   mainnet/alfajores; Sepolia digate, bukan didukung).
@@ -99,7 +99,7 @@ if (!getFederatedAttestationsAddress()) {
 - `docs/README.md`: tautan `file:///Users/ibanana/...` ke dok yang belum ada diganti
   penanda `(belum tersedia)` (tanpa hyperlink), bukan tautan rusak.
 - Nama: standarkan prosa ke **bitPact** & istilah mata uang ke **USDC** di `docs/README.md`,
-  `README.md`, `PROJECT_OVERVIEW.md`. Tidak menyentuh `BitPatchVault` di kode.
+  `README.md`, `PROJECT_OVERVIEW.md`. Tidak menyentuh `BitPactVault` di kode.
 
 ## Risks / Trade-offs
 
@@ -110,7 +110,7 @@ if (!getFederatedAttestationsAddress()) {
 - **[F8] Pengguna demo di Sepolia kehilangan Social Connect** → memang konsekuensi D3;
   log eksplisit memberi tahu operator untuk memakai mainnet/alfajores bila butuh fitur ini.
 - **[F10] Salah ganti nama menembus ke kode** → cleanup nama dibatasi ke file prosa/docs &
-  komentar; identifier kode (`BitPatchVault`, env var yang dibaca kode) tidak diubah,
+  komentar; identifier kode (`BitPactVault`, env var yang dibaca kode) tidak diubah,
   dijaga oleh 69 test yang tetap hijau.
 
 ## Migration Plan
