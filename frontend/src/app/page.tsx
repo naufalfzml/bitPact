@@ -47,7 +47,7 @@ export default function HomePage() {
       <section className="bp-hero">
         <h1 className="bp-hero-title bp-pulse">bitPatch</h1>
         <p className="bp-hero-subtitle">
-          Pixel-accurate, decentralized 8-bit retro gaming tournament platform. Hold escrows, manage brackets, and vote on consensus via Celo cUSD.
+          Pixel-accurate, decentralized 8-bit retro gaming tournament platform. Hold escrows, manage brackets, and vote on consensus via Celo USDC.
         </p>
         <div style={{ display: "flex", justifyContent: "center", gap: "16px", flexWrap: "wrap" }}>
           <Link href="/events/create" className="bp-btn bp-btn-primary bp-btn-lg">
@@ -66,7 +66,7 @@ export default function HomePage() {
           <div className="bp-card">
             <h3 className="bp-card-title">Blind Escrow</h3>
             <p className="bp-text-xs bp-text-muted" style={{ lineHeight: "1.6" }}>
-              Players stake cUSD entry fees into a secure smart contract. Zero developer custody. Zero trust required.
+              Players stake USDC entry fees into a secure smart contract. Zero developer custody. Zero trust required.
             </p>
           </div>
           <div className="bp-card">
@@ -183,7 +183,7 @@ export default function HomePage() {
                     {event.title}
                   </h3>
                   <div className="bp-card-meta">
-                    <p>Ticket Price: <span className="bp-text-primary">{event.ticket_price} cUSD</span></p>
+                    <p>Ticket Price: <span className="bp-text-primary">{event.ticket_price} USDC</span></p>
                     <p>Registered: <span className="bp-text-green">{event.participant_count} Players</span></p>
                   </div>
                   <div className="bp-flex bp-mt-lg">

@@ -7,6 +7,7 @@ const {
   VAULT_ABI,
   uuidToBytes32,
   parseEther,
+  parseUnits,
 } = require("../lib/blockchain");
 const { getRegeneratedReputation } = require("../lib/reputationHelper");
 
@@ -100,7 +101,7 @@ router.post("/", async (req, res) => {
 
     // Create event on-chain via admin wallet (Viem writeContract)
     const eventIdBytes32 = uuidToBytes32(event.id);
-    const ticketPriceWei = parseEther(String(ticket_price));
+    const ticketPriceWei = parseUnits(String(ticket_price), 6);
 
     const txHash = await walletClient.writeContract({
       address: VAULT_ADDRESS,
@@ -1326,8 +1327,9 @@ async function resolveConsensus(eventId) {
         .select("id")
         .eq("event_id", eventId);
 
-      const totalPool = parseEther(
-        String(onChainEvent.ticket_price * allParticipants.length)
+      const totalPool = parseUnits(
+        String(onChainEvent.ticket_price * allParticipants.length),
+        6
       );
       const sharePerWinner = totalPool / BigInt(winners.length);
 

@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
-import { parseEther, keccak256, stringToBytes } from "viem";
-import { API_BASE_URL, VAULT_CONTRACT_ADDRESS, CUSD_TOKEN_ADDRESS, VAULT_ABI, CUSD_ABI } from "@/constants";
+import { parseUnits, keccak256, stringToBytes } from "viem";
+import { API_BASE_URL, VAULT_CONTRACT_ADDRESS, USDC_TOKEN_ADDRESS, VAULT_ABI, USDC_ABI } from "@/constants";
 import { generateGamerTag } from "@/app/components/ConnectButtonClient";
 
 interface Participant {
@@ -179,21 +179,29 @@ export default function EventDetailPage() {
     }
     setRegistering(true);
     setPasswordError(null);
-    setStatusMessage("STEP 1: APPROVING CUSD TRANSACTIONS...");
+    setStatusMessage("STEP 1: APPROVING USDC TRANSACTIONS...");
     try {
-      const ticketPriceWei = parseEther(String(event.ticket_price));
+      const ticketPriceUnits = parseUnits(String(event.ticket_price), 6);
       const eventIdBytes32 = keccak256(stringToBytes(event.id));
 
-      // 1. Approve cUSD Transfer
+      // 1. Approve USDC Transfer
       const approveTx = await writeContractAsync({
-        address: CUSD_TOKEN_ADDRESS,
-        abi: CUSD_ABI,
+        address: USDC_TOKEN_ADDRESS,
+        abi: USDC_ABI,
         functionName: "approve",
-        args: [VAULT_CONTRACT_ADDRESS, ticketPriceWei],
+        args: [VAULT_CONTRACT_ADDRESS, ticketPriceUnits],
       });
       console.log("Approve Tx Hash:", approveTx);
 
-      setStatusMessage("STEP 2: DEPOSITING cUSD INTO VAULT ESCROW...");
+      setStatusMessage("STEP 1.5: CONFIRMING USDC APPROVAL ON-CHAIN...");
+      if (publicClient) {
+        const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveTx });
+        if (approveReceipt.status !== "success") {
+          throw new Error("Persetujuan USDC gagal on-chain. Silakan coba lagi.");
+        }
+      }
+
+      setStatusMessage("STEP 2: DEPOSITING USDC INTO VAULT ESCROW...");
 
       // 2. Register inside Contract
       const registerTx = await writeContractAsync({
@@ -625,13 +633,13 @@ export default function EventDetailPage() {
           <div>
             <span className="bp-text-muted">TICKET PRICE:</span>
             <p className="bp-text-sm bp-text-primary" style={{ marginTop: "4px" }}>
-              {event.ticket_price} cUSD
+              {event.ticket_price} USDC
             </p>
           </div>
           <div>
             <span className="bp-text-muted">TOTAL PRIZE POOL:</span>
             <p className="bp-text-sm bp-text-green" style={{ marginTop: "4px" }}>
-              {(Number(event.ticket_price) * event.participants.length).toFixed(2)} cUSD
+              {(Number(event.ticket_price) * event.participants.length).toFixed(2)} USDC
             </p>
           </div>
           <div>
@@ -728,14 +736,14 @@ export default function EventDetailPage() {
                       </div>
                     )}
                     <p className="bp-text-xs bp-text-muted bp-mb-md">
-                      Join this tournament by locking your {event.ticket_price} cUSD entrance fee in our secure escrow.
+                      Join this tournament by locking your {event.ticket_price} USDC entrance fee in our secure escrow.
                     </p>
                     <button
                       className="bp-btn bp-btn-primary bp-w-full"
                       onClick={() => handleRegister()}
                       disabled={registering}
                     >
-                      {registering ? statusMessage : "■ Register & Lock cUSD"}
+                      {registering ? statusMessage : "■ Register & Lock USDC"}
                     </button>
                   </div>
                 )}

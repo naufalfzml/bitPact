@@ -138,7 +138,7 @@ export default function CreateEventPage() {
 
           {/* Ticket Price */}
           <div className="bp-field">
-            <label className="bp-label">Entry Fee (cUSD) *</label>
+            <label className="bp-label">Entry Fee (USDC) *</label>
             <input
               type="number"
               step="0.01"

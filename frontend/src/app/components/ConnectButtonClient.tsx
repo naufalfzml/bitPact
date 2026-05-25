@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { formatEther, formatUnits } from "viem";
-import { CUSD_TOKEN_ADDRESS, CUSD_ABI, API_BASE_URL } from "@/constants";
+import { USDC_TOKEN_ADDRESS, USDC_ABI, API_BASE_URL } from "@/constants";
 
 /**
  * Generate an 8-bit retro gamer tag from a wallet address.
@@ -31,10 +31,10 @@ export default function ConnectButtonClient() {
     query: { enabled: !!address && mounted },
   });
 
-  // Fetch cUSD token balance
-  const { data: cusdRaw } = useReadContract({
-    address: CUSD_TOKEN_ADDRESS,
-    abi: CUSD_ABI,
+  // Fetch USDC token balance
+  const { data: usdcRaw } = useReadContract({
+    address: USDC_TOKEN_ADDRESS,
+    abi: USDC_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
     query: { enabled: !!address && mounted },
@@ -61,7 +61,7 @@ export default function ConnectButtonClient() {
   }
 
   const celoFormatted = celoBalance ? Number(formatEther(celoBalance.value)).toFixed(2) : "0.00";
-  const cusdFormatted = cusdRaw ? Number(formatUnits(cusdRaw as bigint, 18)).toFixed(2) : "0.00";
+  const usdcFormatted = usdcRaw ? Number(formatUnits(usdcRaw as bigint, 6)).toFixed(2) : "0.00";
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -71,8 +71,8 @@ export default function ConnectButtonClient() {
           <span className="bp-rpg-hp" title="Reputation Score">
             HP:{reputation}/100
           </span>
-          <span className="bp-rpg-bag" title="cUSD Balance">
-            cUSD:{cusdFormatted}
+          <span className="bp-rpg-bag" title="USDC Balance">
+            USDC:{usdcFormatted}
           </span>
           <span className="bp-rpg-gas" title="CELO Balance">
             CELO:{celoFormatted}

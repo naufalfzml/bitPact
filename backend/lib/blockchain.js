@@ -5,6 +5,7 @@ const {
   keccak256,
   toHex,
   parseEther,
+  parseUnits,
   parseAbi,
   getContract,
 } = require("viem");
@@ -52,8 +53,8 @@ const VAULT_ABI = parseAbi([
   "event FundsRefunded(bytes32 indexed eventId, uint256 totalRefunded)",
 ]);
 
-// cUSD ERC-20 minimal ABI (for reading transfer events / balances)
-const CUSD_ABI = parseAbi([
+// USDC ERC-20 minimal ABI (for reading transfer events / balances)
+const USDC_ABI = parseAbi([
   "function balanceOf(address owner) external view returns (uint256)",
   "function allowance(address owner, address spender) external view returns (uint256)",
   "event Transfer(address indexed from, address indexed to, uint256 value)",
@@ -72,7 +73,8 @@ module.exports = {
   walletClient,
   adminAccount,
   VAULT_ABI,
-  CUSD_ABI,
+  USDC_ABI,
   uuidToBytes32,
   parseEther,
+  parseUnits,
 };

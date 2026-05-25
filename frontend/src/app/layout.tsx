@@ -6,7 +6,7 @@ import ConnectButtonClient from "./components/ConnectButtonClient";
 
 export const metadata: Metadata = {
   title: "bitPatch | 8-Bit Web3 Tournaments on Celo",
-  description: "A premium 8-bit retro gaming tournament platform. Hold escrows, manage PvP brackets, vote on consensus, and pay in cUSD via Opera MiniPay.",
+  description: "A premium 8-bit retro gaming tournament platform. Hold escrows, manage PvP brackets, vote on consensus, and pay in USDC.",
 };
 
 export default function RootLayout({

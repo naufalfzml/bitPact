@@ -1,5 +1,5 @@
 export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`;
-export const CUSD_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_CUSD_TOKEN_ADDRESS || "0xEF4d55D6dE8e8d73232827Cd1e9b2F2dBb45bC80") as `0x${string}`;
+export const USDC_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_CUSD_TOKEN_ADDRESS || "0x01C5C0122039549AD1493B8220cABEdD739BC44E") as `0x${string}`;
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export const VAULT_ABI = [
@@ -131,7 +131,7 @@ export const VAULT_ABI = [
   }
 ] as const;
 
-export const CUSD_ABI = [
+export const USDC_ABI = [
   {
     type: "function",
     name: "approve",
