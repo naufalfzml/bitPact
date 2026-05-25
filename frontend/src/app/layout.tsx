@@ -20,9 +20,16 @@ export default function RootLayout({
         <Providers>
           <header className="bp-header">
             <div className="bp-header-inner">
-              <Link href="/" className="bp-logo">
-                ■_bP_■
-              </Link>
+              <div className="bp-header-brand">
+                <Link href="/" className="bp-logo">
+                  <span className="bp-logo-mark">■</span>
+                  <span>_bP_</span>
+                  <span className="bp-logo-mark">■</span>
+                </Link>
+                <p className="bp-header-tagline">
+                  Retro escrow tournaments with clearer roles for players, creators, and live ops.
+                </p>
+              </div>
               <nav className="bp-nav">
                 <Link href="/" className="bp-nav-link">
                   Home
@@ -37,16 +44,25 @@ export default function RootLayout({
             </div>
           </header>
 
-          <main className="bp-container" style={{ minHeight: "calc(100vh - 180px)", paddingTop: "32px" }}>
-            {children}
+          <main className="bp-main">
+            <div className="bp-container">{children}</div>
           </main>
 
           <footer className="bp-footer">
             <div className="bp-container">
-              <p>■ bitPact © 2026 ■</p>
-              <p style={{ marginTop: "8px", fontSize: "0.5rem" }}>
-                PIXEL ACCURATE ESCROW • CELO NETWORK • MINIPAY READY
-              </p>
+              <div className="bp-footer-copy">
+                <div>
+                  <strong>■ bitPact © 2026 ■</strong>
+                  <p className="bp-mt-sm">Tournament escrow, bracket flow, and consensus payout on Celo.</p>
+                </div>
+                <p className="bp-footer-note">
+                  PIXEL ACCURATE ESCROW
+                  <br />
+                  CELO NETWORK
+                  <br />
+                  MINIPAY READY
+                </p>
+              </div>
             </div>
           </footer>
         </Providers>

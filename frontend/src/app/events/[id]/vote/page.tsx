@@ -129,19 +129,24 @@ export default function VotingConsolePage() {
   };
 
   return (
-    <div style={{ maxWidth: "700px", margin: "0 auto" }}>
-      <h2 className="bp-section-title">■ Consensus Voting Console ■</h2>
+    <div className="bp-form-shell bp-stack-lg">
+      <div className="bp-page-intro">
+        <h2 className="bp-section-title">■ Consensus Voting Console ■</h2>
+        <p className="bp-page-copy">
+          Review the proposed winners, compare live ballot momentum, and submit the final agree or reject signal with clearer warning and payout hierarchy.
+        </p>
+      </div>
 
-      <div className="bp-card bp-mb-lg">
+      <div className="bp-card bp-panel-info bp-mb-lg">
         <h3 className="bp-card-title">Event: {event.title}</h3>
-        <p className="bp-text-xs bp-text-muted bp-mt-sm">
+        <p className="bp-card-copy bp-mt-sm">
           Please audit the proposed winners submitted below. If the majority agrees, the escrow funds will automatically unlock and payout. If rejected, funds are refunded to all players.
         </p>
       </div>
 
       {/* Winners List */}
-      <div className="bp-card bp-mb-lg" style={{ borderColor: "var(--bp-green)" }}>
-        <h3 className="bp-card-title" style={{ color: "var(--bp-green)" }}>■ Proposed Winners ■</h3>
+      <div className="bp-card bp-panel-success bp-mb-lg">
+        <h3 className="bp-card-title" data-tone="success">■ Proposed Winners ■</h3>
         <ul className="bp-text-xs bp-mt-md" style={{ listStyleType: "none", padding: 0 }}>
           {winners.map((p, index) => (
             <li key={p.id} className="bp-mb-md" style={{ display: "flex", gap: "12px", alignItems: "center" }}>
@@ -164,13 +169,13 @@ export default function VotingConsolePage() {
 
       {/* Status Messages */}
       {successMsg && (
-        <div className="bp-card bp-text-center bp-text-green bp-blink bp-mb-lg" style={{ borderColor: "var(--bp-green)", padding: "12px" }}>
+        <div className="bp-card bp-panel-success bp-text-center bp-text-green bp-blink bp-mb-lg">
           {successMsg}
         </div>
       )}
 
       {error && (
-        <div className="bp-card bp-text-center bp-text-red bp-mb-lg" style={{ borderColor: "var(--bp-red)", padding: "12px" }}>
+        <div className="bp-card bp-panel-destructive bp-text-center bp-text-red bp-mb-lg">
           ERROR: {error}
         </div>
       )}
@@ -184,9 +189,9 @@ export default function VotingConsolePage() {
           </div>
 
           {!isParticipant ? (
-            <div className="bp-card bp-text-center bp-text-accent bp-mb-lg" style={{ borderColor: "var(--bp-accent)" }}>
+            <div className="bp-card bp-panel-warning bp-text-center bp-text-accent bp-mb-lg">
               AUDITING MODE ONLY
-              <p className="bp-text-xs bp-text-muted bp-mt-sm">
+              <p className="bp-card-copy bp-mt-sm">
                 Your wallet is not registered in this tournament. You may watch live consensus stats, but cannot submit votes.
               </p>
             </div>
@@ -211,8 +216,8 @@ export default function VotingConsolePage() {
 
           {/* Distribute Prize Button — Creator only, quorum met */}
           {isCreator && quorumMet && (
-            <div className="bp-card bp-mb-lg" style={{ borderColor: "var(--bp-green)", background: "rgba(57,255,20,0.05)" }}>
-              <p className="bp-text-xs bp-text-muted bp-mb-md">
+            <div className="bp-card bp-panel-success bp-mb-lg">
+              <p className="bp-card-copy bp-mb-md">
                 Voting quorum reached ({quorumPercent.toFixed(1)}%). You can distribute the prize now.
               </p>
               <button
@@ -243,9 +248,9 @@ export default function VotingConsolePage() {
           )}
         </div>
       ) : (
-        <div className="bp-card bp-text-center bp-mb-lg">
+        <div className="bp-card bp-panel-info bp-text-center bp-mb-lg">
           VOTING IS CLOSED
-          <p className="bp-text-xs bp-text-muted bp-mt-sm">
+          <p className="bp-card-copy bp-mt-sm">
             This tournament consensus is resolved. Status: <span className="bp-text-primary">{event.status.toUpperCase()}</span>
           </p>
         </div>

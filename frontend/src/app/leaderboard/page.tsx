@@ -33,11 +33,16 @@ export default function LeaderboardPage() {
   }, []);
 
   return (
-    <div style={{ maxWidth: "700px", margin: "0 auto" }}>
-      <h2 className="bp-section-title">■ Reputation Leaderboard ■</h2>
+    <div className="bp-form-shell bp-stack-lg">
+      <div className="bp-page-intro">
+        <h2 className="bp-section-title">■ Reputation Leaderboard ■</h2>
+        <p className="bp-page-copy">
+          Reputation is the health bar for trustworthy competitors. Higher scores signal players who consistently vote with consensus and help tournaments settle cleanly.
+        </p>
+      </div>
 
-      <div className="bp-card bp-mb-lg">
-        <p className="bp-text-xs bp-text-muted" style={{ lineHeight: "1.6" }}>
+      <div className="bp-card bp-panel-info bp-mb-lg">
+        <p className="bp-card-copy">
           bitPact's player reputation leaderboard. HP decreases when a player
           consistently votes with the minority during consensus rounds.
           Trusted players maintain high HP.
@@ -45,26 +50,20 @@ export default function LeaderboardPage() {
       </div>
 
       {loading && (
-        <div
-          className="bp-text-center bp-blink bp-text-primary"
-          style={{ padding: "48px 0" }}
-        >
+        <div className="bp-card bp-panel-info bp-text-center bp-blink bp-text-primary">
           LOADING_LEADERBOARD_DATA...
         </div>
       )}
 
       {error && (
-        <div
-          className="bp-card bp-text-center bp-text-red"
-          style={{ borderColor: "var(--bp-red)", padding: "24px" }}
-        >
+        <div className="bp-card bp-panel-destructive bp-text-center bp-text-red">
           ERROR: {error}
         </div>
       )}
 
       {!loading && !error && entries.length === 0 && (
-        <div className="bp-card bp-text-center" style={{ padding: "48px 24px" }}>
-          <p className="bp-text-muted">
+        <div className="bp-card bp-text-center">
+          <p className="bp-card-copy">
             NO REPUTATION DATA YET. PLAY TOURNAMENTS AND VOTE TO GET STARTED.
           </p>
         </div>
@@ -72,6 +71,10 @@ export default function LeaderboardPage() {
 
       {!loading && !error && entries.length > 0 && (
         <div className="bp-card">
+          <h3 className="bp-card-title">■ HP Rankings ■</h3>
+          <p className="bp-card-copy bp-mb-md">
+            Top players keep their consensus record strong, protect settlements, and avoid minority penalties.
+          </p>
           <table className="bp-leaderboard">
             <thead>
               <tr>
@@ -107,8 +110,8 @@ export default function LeaderboardPage() {
                       className="bp-text-muted"
                       style={{
                         display: "block",
-                        fontSize: "0.35rem",
-                        marginTop: "2px",
+                        fontSize: "0.7rem",
+                        marginTop: "4px",
                       }}
                     >
                       {entry.wallet_address.slice(0, 10)}...

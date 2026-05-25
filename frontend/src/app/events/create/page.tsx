@@ -85,20 +85,25 @@ export default function CreateEventPage() {
   };
 
   return (
-    <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-      <h2 className="bp-section-title">■ Create New Tournament ■</h2>
+    <div className="bp-form-shell bp-stack-lg">
+      <div className="bp-page-intro">
+        <h2 className="bp-section-title">■ Create New Tournament ■</h2>
+        <p className="bp-page-copy">
+          Set up the bracket room, choose the access model, and prepare the escrow flow with cleaner form rhythm and clearer role-based panels.
+        </p>
+      </div>
 
       {!isConnected ? (
-        <div className="bp-card bp-text-center" style={{ borderColor: "var(--bp-accent)", padding: "32px 16px" }}>
+        <div className="bp-card bp-panel-warning bp-text-center">
           <p className="bp-text-accent bp-mb-md">WALLET NOT DETECTED</p>
-          <p className="bp-text-xs bp-text-muted">
+          <p className="bp-card-copy">
             Please connect your Web3 wallet using the connect button at the top header to initialize contract creation.
           </p>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="bp-card">
           {error && (
-            <div className="bp-card bp-text-center bp-text-red bp-mb-lg" style={{ borderColor: "var(--bp-red)", padding: "12px" }}>
+            <div className="bp-card bp-panel-destructive bp-text-center bp-text-red bp-mb-lg">
               ERROR: {error}
             </div>
           )}
@@ -169,7 +174,7 @@ export default function CreateEventPage() {
 
           {/* Password Input (only if Password access) */}
           {accessType === "password" && (
-            <div className="bp-field">
+            <div className="bp-field bp-card bp-panel-warning">
               <label className="bp-label">Room Password *</label>
               <input
                 type="text"
@@ -181,7 +186,7 @@ export default function CreateEventPage() {
                 disabled={loading}
                 style={{ letterSpacing: "2px" }}
               />
-              <p className="bp-text-xs bp-text-muted" style={{ marginTop: "4px" }}>
+              <p className="bp-card-copy bp-mt-xs">
                 Share this room code privately with your intended players.
               </p>
             </div>
@@ -189,12 +194,12 @@ export default function CreateEventPage() {
 
           {/* Whitelist Builder (only if Invite-Only access) */}
           {accessType === "invite_only" && (
-            <div className="bp-field">
+            <div className="bp-field bp-card bp-panel-info">
               <label className="bp-label">■ INVITE PLAYERS ■</label>
 
               {/* Social Connect Lookup */}
-              <div style={{ padding: "12px", border: "1px solid var(--bp-cyan)", background: "rgba(0,255,255,0.05)", marginBottom: "12px" }}>
-                <p className="bp-text-xs" style={{ color: "var(--bp-cyan)", marginBottom: "8px" }}>
+              <div className="bp-surface-strip bp-mb-md" style={{ borderColor: "rgba(76, 231, 255, 0.4)" }}>
+                <p className="bp-text-xs bp-text-info bp-font-display bp-mb-sm">
                   ■ ENTER PLAYER EMAIL / PHONE NUMBER ■
                 </p>
                 <div className="bp-flex bp-gap-sm" style={{ alignItems: "flex-end" }}>
@@ -251,7 +256,7 @@ export default function CreateEventPage() {
 
                 {/* Lookup result: resolved */}
                 {socialSearchStatus === "resolved" && socialResolvedAddr && (
-                  <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-green)", background: "rgba(0,255,0,0.05)" }}>
+                  <div className="bp-card bp-panel-success bp-mt-sm">
                     <p className="bp-text-xs bp-text-green">
                       ■ FOUND: {socialResolvedAddr.slice(0, 14)}...{socialResolvedAddr.slice(-8)} — automatically added to the whitelist
                     </p>
@@ -260,7 +265,7 @@ export default function CreateEventPage() {
 
                 {/* Lookup result: not resolved */}
                 {socialSearchStatus === "not_resolved" && (
-                  <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
+                  <div className="bp-card bp-panel-destructive bp-mt-sm">
                     <p className="bp-text-xs bp-text-red" style={{ marginBottom: "6px" }}>
                       ■ IDENTITY NOT REGISTERED IN CELO SOCIAL CONNECT ■
                     </p>
@@ -280,8 +285,8 @@ export default function CreateEventPage() {
 
               {/* Manual wallet input fallback */}
               {showManualFallback && (
-                <div style={{ padding: "12px", border: "1px solid var(--bp-accent)", background: "rgba(255,193,7,0.05)", marginBottom: "12px" }}>
-                  <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "8px" }}>Enter a wallet address manually:</p>
+                <div className="bp-surface-strip bp-mb-md" style={{ borderColor: "rgba(255, 158, 79, 0.38)" }}>
+                  <p className="bp-card-copy bp-mb-sm">Enter a wallet address manually:</p>
                   <div className="bp-flex bp-gap-sm" style={{ alignItems: "flex-end" }}>
                     <input
                       type="text"
@@ -313,11 +318,11 @@ export default function CreateEventPage() {
 
               {/* Whitelist roster preview */}
               {whitelistAddresses.length > 0 && (
-                <div style={{ padding: "8px", border: "1px solid var(--bp-border)", marginTop: "8px" }}>
-                  <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "4px" }}>■ INVITE LIST ({whitelistAddresses.length}):</p>
+                <div className="bp-surface-strip" style={{ borderColor: "rgba(245, 232, 95, 0.34)" }}>
+                  <p className="bp-text-xs bp-text-muted bp-font-display bp-mb-xs">■ INVITE LIST ({whitelistAddresses.length}):</p>
                   {whitelistAddresses.map((addr, i) => (
                     <div key={i} className="bp-flex bp-justify-between bp-items-center" style={{ padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                      <span className="bp-text-xs bp-text-green" style={{ fontFamily: "var(--bp-font)" }}>
+                      <span className="bp-text-xs bp-text-green" style={{ fontFamily: "var(--bp-font-body)" }}>
                         {addr.slice(0, 14)}...{addr.slice(-8)}
                       </span>
                       <button

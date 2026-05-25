@@ -41,80 +41,105 @@ export default function HomePage() {
     fetchEvents();
   }, []);
 
+  const filteredEvents = events.filter((event) => {
+    const query = searchText.toLowerCase();
+    const matchesSearch =
+      event.title.toLowerCase().includes(query) ||
+      event.game_mode.toLowerCase().includes(query);
+
+    if (selectedStage === "all") return matchesSearch;
+    if (selectedStage === "setup") return matchesSearch && event.status === "setup";
+    if (selectedStage === "active") return matchesSearch && event.status === "active";
+    if (selectedStage === "ended") {
+      return matchesSearch && (event.status === "ended" || event.status === "voting" || event.status === "disputed");
+    }
+
+    return matchesSearch;
+  });
+
   return (
-    <div>
-      {/* Hero Section */}
+    <div className="bp-stack-xl">
       <section className="bp-hero">
+        <p className="bp-text-info bp-text-xs bp-font-display">■ ARCADE ESCROW LOBBY ■</p>
         <h1 className="bp-hero-title bp-pulse">bitPact</h1>
         <p className="bp-hero-subtitle">
-          Pixel-accurate, decentralized 8-bit retro gaming tournament platform. Hold escrows, manage brackets, and vote on consensus via Celo USDC.
+          Pixel-accurate tournament escrow on Celo with a cleaner signal path for players, creators, live voting, and payout resolution.
         </p>
-        <div style={{ display: "flex", justifyContent: "center", gap: "16px", flexWrap: "wrap" }}>
+        <div className="bp-metric-grid bp-mb-lg">
+          <div className="bp-metric-item">
+            <span className="bp-text-xs bp-text-muted bp-font-display">ESCROW ROLE</span>
+            <strong>USDC locked before play starts</strong>
+          </div>
+          <div className="bp-metric-item">
+            <span className="bp-text-xs bp-text-muted bp-font-display">BRACKET ROLE</span>
+            <strong>Draft, launch, and track match flow</strong>
+          </div>
+          <div className="bp-metric-item">
+            <span className="bp-text-xs bp-text-muted bp-font-display">CONSENSUS ROLE</span>
+            <strong>Vote, settle, and protect payouts</strong>
+          </div>
+        </div>
+        <div className="bp-flex bp-gap-md bp-items-center" style={{ justifyContent: "center", flexWrap: "wrap" }}>
           <Link href="/events/create" className="bp-btn bp-btn-primary bp-btn-lg">
             ■ Create Event
           </Link>
           <a href="#explore" className="bp-btn bp-btn-accent bp-btn-lg">
-            ■ Explore Brackets
+            ■ Explore Events
           </a>
         </div>
       </section>
 
-      {/* Highlights / Features Grid */}
       <section className="bp-section">
         <h2 className="bp-section-title">■ Features ■</h2>
         <div className="bp-grid bp-grid-3">
-          <div className="bp-card">
+          <div className="bp-card bp-home-feature-card">
             <h3 className="bp-card-title">Blind Escrow</h3>
-            <p className="bp-text-xs bp-text-muted" style={{ lineHeight: "1.6" }}>
+            <p className="bp-card-copy">
               Players stake USDC entry fees into a secure smart contract. Zero developer custody. Zero trust required.
             </p>
           </div>
-          <div className="bp-card">
-            <h3 className="bp-card-title">Dynamic Brackets</h3>
-            <p className="bp-text-xs bp-text-muted" style={{ lineHeight: "1.6" }}>
+          <div className="bp-card bp-home-feature-card bp-panel-info">
+            <h3 className="bp-card-title" data-tone="info">Dynamic Brackets</h3>
+            <p className="bp-card-copy">
               Automated single-elimination bracket generation for 1v1 and Team modes, complete with linear visual connections.
             </p>
           </div>
-          <div className="bp-card">
-            <h3 className="bp-card-title">Minority Penalty</h3>
-            <p className="bp-text-xs bp-text-muted" style={{ lineHeight: "1.6" }}>
+          <div className="bp-card bp-home-feature-card bp-panel-warning">
+            <h3 className="bp-card-title" data-tone="warning">Minority Penalty</h3>
+            <p className="bp-card-copy">
               Consensus-based payout resolution. Trolls voting against the clear majority are penalized in reputation.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Events Listing Section */}
       <section id="explore" className="bp-section" style={{ scrollMarginTop: "100px" }}>
         <h2 className="bp-section-title">■ Active Tournaments ■</h2>
 
-        {/* SELECT STAGE — Search & Filter Bar */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid #333", padding: "16px", marginBottom: "24px" }}>
-          <p className="bp-text-xs" style={{ color: "var(--bp-primary)", letterSpacing: "1px" }}>■ SELECT STAGE & SEARCH CHANNEL ■</p>
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
-            {/* Search Input */}
+        <div className="bp-card bp-panel-info bp-home-filter bp-mb-lg">
+          <div className="bp-split-note">
+            <p className="bp-text-info bp-text-xs bp-font-display">■ SELECT STAGE & SEARCH CHANNEL ■</p>
+            <p>
+              Brand yellow now stays focused on titles and primary outcomes. Use the filters below to scan event state, access requirements, and ticket details without every block competing equally.
+            </p>
+          </div>
+          <div className="bp-flex bp-gap-md bp-items-center" style={{ flexWrap: "wrap" }}>
             <input
               type="text"
-              className="bp-input bp-text-xs"
-              placeholder="SEARCH BY TITLE..."
+              className="bp-input"
+              placeholder="Search by title or mode..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               style={{ flex: 1, minWidth: "200px" }}
             />
-            {/* Stage Selector Buttons */}
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            <div className="bp-home-stage-list">
               {(["all", "setup", "active", "ended"] as const).map((stage) => (
                 <button
                   key={stage}
-                  className={`bp-btn bp-text-xs ${selectedStage === stage ? "bp-btn-accent" : ""}`}
-                  style={{
-                    padding: "8px 12px",
-                    background: selectedStage === stage ? "var(--bp-accent)" : "transparent",
-                    borderColor: "#555"
-                  }}
+                  className={`bp-btn ${selectedStage === stage ? "bp-btn-accent" : "bp-btn-ghost"}`}
                   onClick={() => setSelectedStage(stage)}
                 >
-                  ■ {stage.toUpperCase()}
+                  ■ {stage}
                 </button>
               ))}
             </div>
@@ -122,80 +147,82 @@ export default function HomePage() {
         </div>
 
         {loading && (
-          <div className="bp-text-center bp-blink bp-text-primary" style={{ padding: "48px 0" }}>
+          <div className="bp-card bp-text-center bp-panel-info bp-blink">
             LOADING_DATA_PACKETS...
           </div>
         )}
 
         {error && (
-          <div className="bp-card bp-text-center bp-text-red" style={{ padding: "24px", borderColor: "var(--bp-red)" }}>
+          <div className="bp-card bp-panel-destructive bp-text-center bp-text-red">
             ERROR: {error}
           </div>
         )}
 
-        {/* Filter local events list */}
-        {!loading && !error && (() => {
-          const filteredEvents = events.filter((e) => {
-            const matchesSearch = e.title.toLowerCase().includes(searchText.toLowerCase()) ||
-              e.game_mode.toLowerCase().includes(searchText.toLowerCase());
+        {!loading && !error && filteredEvents.length === 0 && (
+          <div className="bp-card bp-text-center">
+            <p className="bp-card-copy">NO TOURNAMENTS MATCHING THIS STAGE</p>
+            <Link href="/events/create" className="bp-btn bp-btn-primary bp-mt-md">
+              Start A New Event
+            </Link>
+          </div>
+        )}
 
-            if (selectedStage === "all") return matchesSearch;
-            if (selectedStage === "setup") return matchesSearch && e.status === "setup";
-            if (selectedStage === "active") return matchesSearch && e.status === "active";
-            if (selectedStage === "ended") return matchesSearch && (e.status === "ended" || e.status === "voting" || e.status === "disputed");
-            return matchesSearch;
-          });
-
-          if (filteredEvents.length === 0) {
-            return (
-              <div className="bp-card bp-text-center" style={{ padding: "48px 24px" }}>
-                <p className="bp-text-muted">NO TOURNAMENTS MATCHING THIS STAGE</p>
-                <Link href="/events/create" className="bp-btn bp-btn-primary bp-mt-md">
-                  Start A New Event
-                </Link>
-              </div>
-            );
-          }
-
-          return (
-            <div className="bp-grid bp-grid-2">
-              {filteredEvents.map((event) => (
-                <div key={event.id} className="bp-card">
-                  <div className="bp-flex bp-justify-between bp-items-center bp-mb-md">
-                    <div className="bp-flex bp-gap-sm bp-items-center" style={{ flexWrap: "wrap" }}>
-                      <span className={`bp-badge bp-badge-${event.game_mode}`}>
-                        {event.game_mode} {event.game_mode === "team" ? `(${event.team_size}v${event.team_size})` : ""}
+        {!loading && !error && filteredEvents.length > 0 && (
+          <div className="bp-grid bp-grid-2">
+            {filteredEvents.map((event) => (
+              <div key={event.id} className="bp-card bp-card-interactive bp-home-event-card">
+                <div className="bp-flex bp-justify-between bp-items-center bp-gap-sm" style={{ flexWrap: "wrap" }}>
+                  <div className="bp-flex bp-gap-sm bp-items-center" style={{ flexWrap: "wrap" }}>
+                    <span className={`bp-badge bp-badge-${event.game_mode}`}>
+                      {event.game_mode} {event.game_mode === "team" ? `(${event.team_size}v${event.team_size})` : ""}
+                    </span>
+                    {event.access_type === "password" && (
+                      <span
+                        className="bp-badge"
+                        style={{ borderColor: "var(--bp-warning)", color: "var(--bp-warning)", background: "rgba(255, 158, 79, 0.08)" }}
+                      >
+                        ■ PASSWORD ■
                       </span>
-                      {event.access_type === "password" && (
-                        <span className="bp-badge" style={{ borderColor: "var(--bp-accent)", color: "var(--bp-accent)", background: "rgba(255,193,7,0.1)", fontSize: "0.4rem" }}>
-                          ■ PASSWORD ■
-                        </span>
-                      )}
-                      {event.access_type === "invite_only" && (
-                        <span className="bp-badge" style={{ borderColor: "var(--bp-cyan)", color: "var(--bp-cyan)", background: "rgba(0,255,255,0.1)", fontSize: "0.4rem" }}>
-                          ■ INVITE ■
-                        </span>
-                      )}
-                    </div>
-                    <span className={`bp-badge bp-badge-${event.status}`}>{event.status}</span>
+                    )}
+                    {event.access_type === "invite_only" && (
+                      <span
+                        className="bp-badge"
+                        style={{ borderColor: "var(--bp-info)", color: "var(--bp-info)", background: "rgba(76, 231, 255, 0.08)" }}
+                      >
+                        ■ INVITE ■
+                      </span>
+                    )}
                   </div>
-                  <h3 className="bp-card-title" style={{ fontSize: "1rem", minHeight: "2.4rem" }}>
+                  <span className={`bp-badge bp-badge-${event.status}`}>{event.status}</span>
+                </div>
+                <div className="bp-stack-sm">
+                  <h3 className="bp-card-title" style={{ fontSize: "0.9rem" }}>
                     {event.title}
                   </h3>
-                  <div className="bp-card-meta">
-                    <p>Ticket Price: <span className="bp-text-primary">{event.ticket_price} USDC</span></p>
-                    <p>Registered: <span className="bp-text-green">{event.participant_count} Players</span></p>
-                  </div>
-                  <div className="bp-flex bp-mt-lg">
-                    <Link href={`/events/${event.id}`} className="bp-btn bp-btn-primary bp-w-full">
-                      Enter Tournament Console
-                    </Link>
-                  </div>
+                  <p className="bp-card-copy">
+                    Created {new Date(event.created_at).toLocaleDateString()} for {event.game_mode.toUpperCase()} competition with a clean payout route.
+                  </p>
                 </div>
-              ))}
-            </div>
-          );
-        })()}
+                <div className="bp-home-event-meta">
+                  <p>
+                    Ticket Price: <span className="bp-text-primary">{event.ticket_price} USDC</span>
+                  </p>
+                  <p>
+                    Registered: <span className="bp-text-green">{event.participant_count} players</span>
+                  </p>
+                  <p>
+                    Access: <span className="bp-text-info">{event.access_type ?? "public"}</span>
+                  </p>
+                </div>
+                <div className="bp-home-card-footer">
+                  <Link href={`/events/${event.id}`} className="bp-btn bp-btn-primary bp-w-full">
+                    Enter Tournament Console
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

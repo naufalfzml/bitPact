@@ -596,97 +596,98 @@ export default function EventDetailPage() {
   // Social Connect invites only populate the whitelist (handleAddToWhitelist);
   // invited players must register + deposit on-chain to join the roster.
 
+  const participantLimitLabel = event.max_participants ? `${event.participants.length}/${event.max_participants}` : `${event.participants.length}/∞`;
+  const prizePool = (Number(event.ticket_price) * event.participants.length).toFixed(2);
+  const votingPercent = Number(event.voting.percentage || 0);
+  const bracketRounds = Array.from(new Set(event.brackets.map((match) => match.round)));
+
   return (
-    <div>
-      {/* Event Header Banner */}
-      <section className="bp-card bp-mb-lg">
-        <div className="bp-flex bp-justify-between bp-items-center bp-mb-md">
+    <div className="bp-stack-lg">
+      <section className="bp-card bp-overview-card">
+        <div className="bp-flex bp-justify-between bp-items-center bp-gap-sm" style={{ flexWrap: "wrap" }}>
           <div className="bp-flex bp-gap-sm bp-items-center">
             <span className={`bp-badge bp-badge-${event.game_mode}`}>
               {event.game_mode} {event.game_mode === "team" ? `(${event.team_size}v${event.team_size})` : ""}
             </span>
             {/* Access Type Badge */}
             {event.access_type === "password" && (
-              <span className="bp-badge" style={{ borderColor: "var(--bp-accent)", color: "var(--bp-accent)", background: "rgba(255,193,7,0.1)" }}>
+              <span className="bp-badge" style={{ borderColor: "var(--bp-warning)", color: "var(--bp-warning)", background: "rgba(255, 158, 79, 0.08)" }}>
                 ■ PRIVATE: PASSWORD ■
               </span>
             )}
             {event.access_type === "invite_only" && (
-              <span className="bp-badge" style={{ borderColor: "var(--bp-cyan)", color: "var(--bp-cyan)", background: "rgba(0,255,255,0.1)" }}>
+              <span className="bp-badge" style={{ borderColor: "var(--bp-info)", color: "var(--bp-info)", background: "rgba(76, 231, 255, 0.08)" }}>
                 ■ PRIVATE: INVITE ONLY ■
               </span>
             )}
           </div>
           <span className={`bp-badge bp-badge-${event.status}`}>{event.status}</span>
         </div>
-        <h1 className="bp-text-xl bp-text-primary bp-mb-md">{event.title}</h1>
-        <div className="bp-grid bp-grid-3 bp-text-xs">
-          <div>
-            <span className="bp-text-muted">TICKET PRICE:</span>
-            <p className="bp-text-sm bp-text-primary" style={{ marginTop: "4px" }}>
-              {event.ticket_price} USDC
-            </p>
+        <div className="bp-stack-sm">
+          <p className="bp-text-info bp-text-xs bp-font-display">■ EVENT CONTROL ROOM ■</p>
+          <h1 className="bp-text-xl bp-text-primary">{event.title}</h1>
+          <p className="bp-card-copy">
+            Participant state, creator controls, voting progress, and arena flow are grouped below so each role can spot the next relevant action without scanning one long uniform column.
+          </p>
+        </div>
+        <div className="bp-metric-grid bp-text-xs">
+          <div className="bp-metric-item">
+            <span className="bp-text-muted bp-font-display">TICKET PRICE</span>
+            <strong className="bp-text-primary">{event.ticket_price} USDC</strong>
           </div>
-          <div>
-            <span className="bp-text-muted">TOTAL PRIZE POOL:</span>
-            <p className="bp-text-sm bp-text-green" style={{ marginTop: "4px" }}>
-              {(Number(event.ticket_price) * event.participants.length).toFixed(2)} USDC
-            </p>
+          <div className="bp-metric-item">
+            <span className="bp-text-muted bp-font-display">PRIZE POOL</span>
+            <strong className="bp-text-green">{prizePool} USDC</strong>
           </div>
-          <div>
-            <span className="bp-text-muted">PARTICIPANTS:</span>
-            <p className="bp-text-sm" style={{ marginTop: "4px" }}>
-              {event.participants.length} Players Registered
-            </p>
+          <div className="bp-metric-item">
+            <span className="bp-text-muted bp-font-display">PARTICIPANTS</span>
+            <strong>{participantLimitLabel}</strong>
           </div>
         </div>
       </section>
 
-      {/* Main Details Panel */}
-      <div className="bp-grid bp-grid-2">
-        {/* Left Side: General Info, Registration & Voting Stats */}
+      <div className="bp-dashboard-layout">
         <div className="bp-flex bp-flex-col bp-gap-lg">
-          {/* Registration / Active Console */}
-          <div className="bp-card">
-            <h3 className="bp-card-title">■ Player Console ■</h3>
+          <div className="bp-card bp-panel-info">
+            <h3 className="bp-card-title" data-tone="info">■ Player Console ■</h3>
 
             {event.status === "setup" && (
               <div>
                 {/* Creator Restriction: block creators from registering */}
                 {isCreator ? (
-                  <div className="bp-text-center" style={{ padding: "16px 8px", border: "2px solid var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
+                  <div className="bp-card bp-panel-destructive bp-text-center">
                     <p className="bp-text-red bp-text-sm" style={{ letterSpacing: "1px" }}>■ KREATUR TIDAK BISA IKUT BERMAIN ■</p>
-                    <p className="bp-text-xs bp-text-muted bp-mt-sm">
+                    <p className="bp-card-copy bp-mt-sm">
                       As the organizer or jury, you cannot participate in a tournament you created yourself.
                     </p>
                   </div>
                 ) : event.roster_locked ? (
-                  <div className="bp-text-center" style={{ padding: "16px 8px", border: "2px dashed var(--bp-accent)", background: "rgba(255,193,7,0.05)" }}>
+                  <div className="bp-card bp-panel-warning bp-text-center">
                     <p className="bp-text-accent bp-text-sm" style={{ letterSpacing: "1px" }}>■ REGISTRASI DITUTUP ■</p>
-                    <p className="bp-text-xs bp-text-muted bp-mt-sm">
+                    <p className="bp-card-copy bp-mt-sm">
                       Registration has been closed by the organizer. The tournament is currently in the bracket drafting phase.
                     </p>
                   </div>
                 ) : isRegistered ? (
                   <div className="bp-text-center">
                     <p className="bp-text-green bp-blink bp-text-sm">■ YOU ARE REGISTERED ■</p>
-                    <p className="bp-text-xs bp-text-muted bp-mt-sm">Waiting for the creator to start the tournament matches.</p>
+                    <p className="bp-card-copy bp-mt-sm">Waiting for the creator to start the tournament matches.</p>
                   </div>
                 ) : event.max_participants && event.participants.length >= event.max_participants ? (
-                  <div className="bp-text-center" style={{ padding: "16px 8px", border: "2px dashed var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
+                  <div className="bp-card bp-panel-destructive bp-text-center">
                     <p className="bp-text-red bp-text-sm" style={{ letterSpacing: "1px" }}>■ SLOT PENUH ■</p>
-                    <p className="bp-text-xs bp-text-muted bp-mt-sm">
+                    <p className="bp-card-copy bp-mt-sm">
                       The tournament has reached its maximum capacity ({event.max_participants} registrants).
                     </p>
                   </div>
                 ) : event.access_type === "password" ? (
                   /* Password-protected registration form */
                   <div>
-                    <p className="bp-text-xs bp-text-muted bp-mb-md">
+                    <p className="bp-card-copy bp-mb-md">
                       This tournament requires a room code. Enter the password shared by the organizer to register.
                     </p>
                     {passwordError && (
-                      <div className="bp-text-center bp-text-red bp-text-xs bp-mb-sm" style={{ padding: "8px", border: "1px solid var(--bp-red)" }}>
+                      <div className="bp-card bp-panel-destructive bp-text-center bp-text-red bp-text-xs bp-mb-sm">
                         {passwordError}
                       </div>
                     )}
@@ -713,7 +714,7 @@ export default function EventDetailPage() {
                   /* Invite-only: user not on whitelist — RED denied banner */
                   <div className="bp-whitelist-banner denied">
                     ■ AKSES TERBATAS: ANDA TIDAK DIUNDANG ■
-                    <p className="bp-text-xs bp-text-muted" style={{ marginTop: "8px", color: "var(--bp-muted)" }}>
+                    <p className="bp-card-copy bp-mt-sm" style={{ color: "var(--bp-muted)" }}>
                       This tournament is for invited participants only. Contact the organizer to request access.
                     </p>
                   </div>
@@ -726,7 +727,7 @@ export default function EventDetailPage() {
                         ■ ANDA TERDAFTAR DI WHITELIST ■
                       </div>
                     )}
-                    <p className="bp-text-xs bp-text-muted bp-mb-md">
+                    <p className="bp-card-copy bp-mb-md">
                       Join this tournament by locking your {event.ticket_price} USDC entrance fee in our secure escrow.
                     </p>
                     <button
@@ -744,13 +745,13 @@ export default function EventDetailPage() {
             {event.status === "active" && (
               <div className="bp-text-center">
                 <p className="bp-text-green bp-text-sm">■ TOURNAMENT ACTIVE ■</p>
-                <p className="bp-text-xs bp-text-muted bp-mt-sm">Matches are currently playing in real-time. Follow bracket state below.</p>
+                <p className="bp-card-copy bp-mt-sm">Matches are currently playing in real-time. Follow bracket state below.</p>
               </div>
             )}
 
             {event.status === "voting" && (
               <div>
-                <p className="bp-text-xs bp-text-muted bp-mb-md">
+                <p className="bp-card-copy bp-mb-md">
                   Winners have been submitted by the jury. Consensus voting is open for 24 hours to confirm results.
                 </p>
                 <button
@@ -765,23 +766,22 @@ export default function EventDetailPage() {
             {event.status === "ended" && (
               <div className="bp-text-center">
                 <p className="bp-text-muted bp-text-sm">■ TOURNAMENT COMPLETED ■</p>
-                <p className="bp-text-xs bp-text-muted bp-mt-sm">Funds have been fully automated, settled and distributed.</p>
+                <p className="bp-card-copy bp-mt-sm">Funds have been fully automated, settled and distributed.</p>
               </div>
             )}
 
             {event.status === "disputed" && (
               <div className="bp-text-center">
                 <p className="bp-text-red bp-blink bp-text-sm">■ SYSTEM DISPUTED ■</p>
-                <p className="bp-text-xs bp-text-muted bp-mt-sm">The consensus vote tied 50/50. Waiting for creator to appeal revised winners.</p>
+                <p className="bp-card-copy bp-mt-sm">The consensus vote tied 50/50. Waiting for creator to appeal revised winners.</p>
               </div>
             )}
           </div>
 
-          {/* Proof Upload (Audit requirements) */}
           {event.photo_required && isRegistered && myParticipantObj?.status === "winner" && (
-            <div className="bp-card" style={{ borderColor: "var(--bp-accent)" }}>
-              <h3 className="bp-card-title" style={{ color: "var(--bp-accent)" }}>■ Photo Audit Proof Required ■</h3>
-              <p className="bp-text-xs bp-text-muted bp-mb-md">
+            <div className="bp-card bp-panel-warning">
+              <h3 className="bp-card-title" data-tone="warning">■ Photo Audit Proof Required ■</h3>
+              <p className="bp-card-copy bp-mb-md">
                 Jury designated you as a winner! You MUST upload screenshot proof of your match results before rewards can be unlocked.
               </p>
               {myParticipantObj.uploaded_photo_url ? (
@@ -818,11 +818,10 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {/* Voting progress (Only if Voting / Ended / Disputed) */}
           {["voting", "ended", "disputed"].includes(event.status) && (
-            <div className="bp-card">
-              <h3 className="bp-card-title">■ Consensus Consensus Stats ■</h3>
-              <p className="bp-text-xs bp-text-muted bp-mb-md">
+            <div className="bp-card bp-panel-info">
+              <h3 className="bp-card-title" data-tone="info">■ Consensus Stats ■</h3>
+              <p className="bp-card-copy bp-mb-md">
                 Voting Status: {event.voting.total} Votes logged. Agree threshold: {event.consensus_threshold}%.
               </p>
               <div className="bp-flex bp-justify-between bp-text-xs bp-mb-xs">
@@ -831,7 +830,7 @@ export default function EventDetailPage() {
               </div>
               <div className="bp-progress bp-mb-md">
                 <div
-                  className="bp-progress-fill"
+                  className={`bp-progress-fill ${event.voting.reject > event.voting.agree ? "reject" : ""}`}
                   style={{ width: `${event.voting.percentage || 0}%` }}
                 />
               </div>
@@ -843,20 +842,19 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {/* Participants list */}
           <div className="bp-card">
             <h3 className="bp-card-title">■ Registered Roster ■</h3>
 
             {/* Whitelist Management + Social Connect — Creator Only, Invite-Only, Setup Phase */}
             {isCreator && event.status === "setup" && event.access_type === "invite_only" && (
-              <div style={{ marginBottom: "16px", padding: "12px", border: "1px solid var(--bp-cyan)", background: "rgba(0,255,255,0.05)" }}>
-                <p className="bp-text-xs" style={{ color: "var(--bp-cyan)", marginBottom: "8px" }}>
+              <div className="bp-card bp-panel-info bp-mb-md">
+                <p className="bp-text-xs bp-text-info bp-font-display bp-mb-sm">
                   ■ WHITELIST MANAGEMENT ■
                 </p>
 
                 {/* Social Connect Lookup */}
-                <div style={{ marginBottom: "12px", padding: "10px", border: "1px solid var(--bp-accent)", background: "rgba(0,0,0,0.3)" }}>
-                  <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "8px" }}>
+                <div className="bp-surface-strip bp-mb-md" style={{ borderColor: "rgba(255, 158, 79, 0.32)" }}>
+                  <p className="bp-card-copy bp-mb-sm">
                     ■ ENTER PLAYER EMAIL / PHONE NUMBER ■
                   </p>
                   <form onSubmit={async (e) => {
@@ -887,7 +885,7 @@ export default function EventDetailPage() {
 
                   {/* Lookup Result: Resolved — auto-add to whitelist */}
                   {socialLookupStatus === "resolved" && resolvedAddress && (
-                    <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-green)", background: "rgba(0,255,0,0.05)" }}>
+                    <div className="bp-card bp-panel-success bp-mt-sm">
                       <p className="bp-text-xs bp-text-green" style={{ marginBottom: "4px" }}>
                         ■ FOUND: {resolvedAddress.slice(0, 14)}...{resolvedAddress.slice(-8)}
                       </p>
@@ -908,7 +906,7 @@ export default function EventDetailPage() {
 
                   {/* Lookup Result: Not Found */}
                   {socialLookupStatus === "not_resolved" && (
-                    <div style={{ marginTop: "8px", padding: "8px", border: "1px solid var(--bp-red)", background: "rgba(255,0,0,0.05)" }}>
+                    <div className="bp-card bp-panel-destructive bp-mt-sm">
                       <p className="bp-text-xs bp-text-red">
                       ■ IDENTITY NOT REGISTERED IN CELO SOCIAL CONNECT ■
                       </p>
@@ -920,7 +918,7 @@ export default function EventDetailPage() {
                 </div>
 
                 {/* Manual wallet address input */}
-                <p className="bp-text-xs bp-text-muted" style={{ marginBottom: "6px" }}>Or enter a wallet address manually:</p>
+                <p className="bp-card-copy bp-mb-xs">Or enter a wallet address manually:</p>
                 <div className="bp-flex bp-gap-sm bp-mb-sm" style={{ alignItems: "flex-end" }}>
                   <input
                     type="text"
@@ -1036,12 +1034,12 @@ export default function EventDetailPage() {
         <div className="bp-flex bp-flex-col bp-gap-lg">
           {/* Creator Panel */}
           {isCreator && (
-            <div className="bp-card" style={{ borderColor: "var(--bp-primary)" }}>
-              <h3 className="bp-card-title">🛡️ Creator Control Console 🛡️</h3>
+            <div className="bp-card bp-panel-warning">
+              <h3 className="bp-card-title" data-tone="warning">🛡️ Creator Control Console 🛡️</h3>
 
               {event.status === "setup" && !event.roster_locked && (
                 <div>
-                  <p className="bp-text-xs bp-text-muted bp-mb-md">
+                  <p className="bp-card-copy bp-mb-md">
                     Player registration is open ({event.participants.length}/{event.max_participants ? event.max_participants : "∞"} players). Close registration to lock the roster and open the bracket draft phase.
                   </p>
                   <button
@@ -1066,7 +1064,7 @@ export default function EventDetailPage() {
                     ■ CLOSE SIGNUPS ■
                   </button>
                   {event.participants.length < 2 && (
-                    <p className="bp-text-red" style={{ fontSize: "0.4rem", marginTop: "4px", textAlign: "center" }}>
+                    <p className="bp-text-red bp-text-xs bp-mt-xs bp-text-center">
                       * You need at least 2 participants to close registration.
                     </p>
                   )}
@@ -1078,7 +1076,7 @@ export default function EventDetailPage() {
                   {event.brackets.length === 0 ? (
                     /* Select Game Mode dynamically */
                     <div>
-                      <p className="bp-text-xs bp-text-muted bp-mb-md">
+                      <p className="bp-card-copy bp-mb-md">
                         Roster locked ({event.participants.length} players). Please select the game mode for this tournament:
                       </p>
                       <div className="bp-field">
@@ -1114,16 +1112,16 @@ export default function EventDetailPage() {
                       </div>
 
                       {event.game_mode === "1v1" ? (
-                        <div style={{ maxHeight: "250px", overflowY: "auto", border: "1px solid #333", padding: "8px", background: "#0b0b0f", marginBottom: "12px" }}>
+                        <div style={{ maxHeight: "250px", overflowY: "auto", border: "1px solid rgba(114, 128, 168, 0.26)", padding: "8px", background: "rgba(7, 10, 21, 0.7)", marginBottom: "12px" }}>
                           {localDraftMatches.map((match, idx) => (
-                            <div key={match.id || idx} style={{ borderBottom: "1px solid #222", paddingBottom: "8px", marginBottom: "8px" }}>
-                              <p className="bp-text-muted" style={{ fontSize: "0.45rem", marginBottom: "4px" }}>
+                            <div key={match.id || idx} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "8px", marginBottom: "8px" }}>
+                              <p className="bp-text-muted" style={{ fontSize: "0.6rem", marginBottom: "4px" }}>
                                 MATCH {match.match_index + 1}
                               </p>
                               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                                 {/* Slot Player A */}
                                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                  <span className="bp-text-xs bp-text-muted" style={{ width: "60px", fontSize: "0.45rem" }}>SLOT A:</span>
+                                  <span className="bp-text-xs bp-text-muted" style={{ width: "60px", fontSize: "0.6rem" }}>SLOT A:</span>
                                   <select
                                     className="bp-select bp-text-xs"
                                     style={{ flex: 1, padding: "4px", background: "#15151f", appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }}
@@ -1146,7 +1144,7 @@ export default function EventDetailPage() {
                                 </div>
                                 {/* Slot Player B */}
                                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                  <span className="bp-text-xs bp-text-muted" style={{ width: "60px", fontSize: "0.45rem" }}>SLOT B:</span>
+                                  <span className="bp-text-xs bp-text-muted" style={{ width: "60px", fontSize: "0.6rem" }}>SLOT B:</span>
                                   <select
                                     className="bp-select bp-text-xs"
                                     style={{ flex: 1, padding: "4px", background: "#15151f", appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }}
@@ -1172,9 +1170,9 @@ export default function EventDetailPage() {
                           ))}
                         </div>
                       ) : (
-                        <div style={{ padding: "12px", border: "1px solid var(--bp-cyan)", background: "rgba(0,255,255,0.05)", marginBottom: "12px", textAlign: "center" }}>
-                          <p className="bp-text-xs" style={{ color: "var(--bp-cyan)" }}>■ MODE TIM 2V2 / CUSTOM ■</p>
-                          <p className="bp-text-muted bp-mt-sm" style={{ fontSize: "0.4rem" }}>
+                        <div className="bp-surface-strip bp-text-center bp-mb-md" style={{ borderColor: "rgba(76, 231, 255, 0.4)" }}>
+                          <p className="bp-text-xs bp-text-info bp-font-display">■ MODE TIM 2V2 / CUSTOM ■</p>
+                          <p className="bp-card-copy bp-mt-sm">
                             Registered participants ({event.participants.length} players) will be randomly split into Red Team and Blue Team when the official match starts.
                           </p>
                         </div>
@@ -1216,7 +1214,7 @@ export default function EventDetailPage() {
 
               {event.status === "active" && event.game_mode === "ffa" && (
                 <div>
-                  <p className="bp-text-xs bp-text-muted bp-mb-md">
+                  <p className="bp-card-copy bp-mb-md">
                     FFA mode is complete. Enter the top 3 winner addresses below to unlock the payout validation pool.
                   </p>
                   <div className="bp-field">
@@ -1267,7 +1265,7 @@ export default function EventDetailPage() {
 
               {event.status === "active" && (event.game_mode === "1v1" || event.game_mode === "team") && (
                 <div>
-                  <p className="bp-text-xs bp-text-muted bp-mb-md">
+                  <p className="bp-card-copy bp-mb-md">
                     Matches are currently running. Declare the winner of each box directly in the bracket panel on the right.
                   </p>
                   {/* If final match is completed, let creator finalize the tournament */}
@@ -1298,35 +1296,35 @@ export default function EventDetailPage() {
 
               {event.status === "voting" && (
                 <div>
-                  <p className="bp-text-xs bp-text-muted bp-mb-md">
+                  <p className="bp-card-copy bp-mb-md">
                     The tournament is currently in the voting phase. Payout happens automatically once voting ends. If you want to settle it sooner, you can trigger manual prize distribution below after voter quorum is reached (&gt;51%).
                   </p>
                   
                   {/* Quorum Progress bar */}
-                  <div style={{ border: "1px solid var(--bp-primary)", padding: "10px", background: "rgba(255, 193, 7, 0.05)", marginBottom: "12px" }}>
+                  <div className="bp-surface-strip bp-mb-md" style={{ borderColor: "rgba(245, 232, 95, 0.34)" }}>
                     <div className="bp-flex bp-justify-between bp-text-xs bp-mb-xs">
                       <span>VOTING QUORUM PROGRESS:</span>
                       <span style={{ color: "var(--bp-green)" }}>
                         {event.voting.percentage || "0"}%
                       </span>
                     </div>
-                    <div style={{ height: "10px", width: "100%", background: "#111", border: "1px solid #333", overflow: "hidden" }}>
+                    <div style={{ height: "10px", width: "100%", background: "#111", border: "1px solid rgba(114, 128, 168, 0.28)", overflow: "hidden" }}>
                       <div 
                         style={{ 
                           height: "100%", 
-                          width: `${Math.min(100, Number(event.voting.percentage || 0))}%`, 
-                          background: "var(--bp-green)" 
+                          width: `${Math.min(100, votingPercent)}%`, 
+                          background: "var(--bp-success)" 
                         }} 
                       />
                     </div>
-                    <p className="bp-text-muted" style={{ fontSize: "0.35rem", marginTop: "4px" }}>
+                    <p className="bp-card-copy bp-mt-xs" style={{ fontSize: "0.78rem" }}>
                       Total Votes: {event.voting.total} / {event.participants.length} Players. Minimum required to unlock button: 51%.
                     </p>
                   </div>
 
                   <button
                     className="bp-btn bp-btn-green bp-w-full"
-                    disabled={Number(event.voting.percentage || 0) < 51}
+                    disabled={votingPercent < 51}
                     onClick={async () => {
                       if (!confirm("Trigger manual prize distribution based on the current consensus vote?")) return;
                       try {
@@ -1351,7 +1349,7 @@ export default function EventDetailPage() {
 
               {event.status === "disputed" && (
                 <div>
-                  <p className="bp-text-xs bp-text-muted bp-mb-md">
+                  <p className="bp-card-copy bp-mb-md">
                     Consensus tied. Enter a revised, resolved list of winner wallets (comma separated) to appeal to voters.
                   </p>
                   <form onSubmit={handleAppeal} className="bp-flex bp-flex-col bp-gap-sm">
@@ -1377,8 +1375,8 @@ export default function EventDetailPage() {
           )}
 
           {/* Visual Brackets or Leaderboard Display */}
-          <div className="bp-card">
-            <h3 className="bp-card-title">■ Arena Board ■</h3>
+          <div className="bp-card bp-panel-info">
+            <h3 className="bp-card-title" data-tone="info">■ Arena Board ■</h3>
 
             {event.status === "setup" && (
               <div className="bp-text-center bp-text-muted" style={{ padding: "48px 0" }}>
@@ -1388,7 +1386,7 @@ export default function EventDetailPage() {
 
             {event.status !== "setup" && event.game_mode === "ffa" && (
               <div>
-                <p className="bp-text-xs bp-text-muted bp-mb-lg">
+                <p className="bp-card-copy bp-mb-lg">
                   Free-For-All mode leaderboard. Once the creator declares final ranking, winners are showcased below:
                 </p>
                 <table className="bp-leaderboard">
@@ -1419,13 +1417,13 @@ export default function EventDetailPage() {
 
             {event.status !== "setup" && (event.game_mode === "1v1" || event.game_mode === "team") && (
               <div>
-                <p className="bp-text-xs bp-text-muted bp-mb-md">
+                <p className="bp-card-copy bp-mb-md">
                   Single elimination brackets. {isCreator && <span className="bp-text-primary">Jury Mode: Click on a player's box to advance them.</span>}
                 </p>
 
                 <div className="bp-bracket">
                   {/* Group matches by rounds */}
-                  {Array.from(new Set(event.brackets.map((b) => b.round))).map((roundNum) => {
+                  {bracketRounds.map((roundNum) => {
                     const roundMatches = event.brackets.filter((b) => b.round === roundNum);
                     return (
                       <div key={roundNum} className="bp-bracket-round">
