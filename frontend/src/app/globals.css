@@ -537,6 +537,12 @@ textarea {
   border-color: var(--bp-destructive);
 }
 
+.bp-badge-settlement_failed {
+  color: var(--bp-destructive);
+  border-color: var(--bp-destructive);
+  background: rgba(255, 92, 122, 0.12);
+}
+
 .bp-badge-1v1 {
   color: var(--bp-warning);
   border-color: var(--bp-warning);

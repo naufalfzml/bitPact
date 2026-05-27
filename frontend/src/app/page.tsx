@@ -52,7 +52,15 @@ export default function HomePage() {
     if (selectedStage === "setup") return matchesSearch && event.status === "setup";
     if (selectedStage === "active") return matchesSearch && event.status === "active";
     if (selectedStage === "ended") {
-      return matchesSearch && (event.status === "ended" || event.status === "voting" || event.status === "disputed");
+      // Include settlement_failed here: the tournament is effectively over but
+      // funds need recovery, so it should NOT disappear from the default scan.
+      return (
+        matchesSearch &&
+        (event.status === "ended" ||
+          event.status === "voting" ||
+          event.status === "disputed" ||
+          event.status === "settlement_failed")
+      );
     }
 
     return matchesSearch;
@@ -199,6 +207,9 @@ export default function HomePage() {
                       >
                         ■ INVITE ■
                       </span>
+                    )}
+                    {event.status === "settlement_failed" && (
+                      <span className="bp-badge bp-badge-settlement_failed">RECOVERY</span>
                     )}
                   </div>
                   <span className={`bp-badge bp-badge-${event.status}`}>{event.status}</span>
