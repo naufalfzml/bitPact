@@ -2,6 +2,18 @@ export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_AD
 export const USDC_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_CUSD_TOKEN_ADDRESS || "0x01C5C0122039549AD1493B8220cABEdD739BC44E") as `0x${string}`;
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
+/**
+ * Build a Blockscout explorer URL for a transaction hash on the configured
+ * Celo network. Falls back to Sepolia (the default for `CELO_NETWORK` in
+ * backend/lib/blockchain.js) when the network env is missing.
+ */
+export function getTxExplorerUrl(txHash: string): string {
+  const net = (process.env.NEXT_PUBLIC_CELO_NETWORK || "sepolia").toLowerCase();
+  if (net === "mainnet") return `https://celo.blockscout.com/tx/${txHash}`;
+  if (net === "alfajores") return `https://celo-alfajores.blockscout.com/tx/${txHash}`;
+  return `https://celo-sepolia.blockscout.com/tx/${txHash}`;
+}
+
 export const VAULT_ABI = [
   {
     type: "constructor",
