@@ -1496,38 +1496,6 @@ async function resolveConsensus(eventId, isTimeout = false) {
     }
   }
 }
-// ──────────────────────────────────────────────
-//  GET /api/events/leaderboard/reputation — Reputation Leaderboard
-// ──────────────────────────────────────────────
-router.get("/leaderboard/reputation", async (_req, res) => {
-  try {
-    // Get the latest reputation score for each unique wallet
-    const { data: reputations, error } = await supabase
-      .from("reputation_tracking")
-      .select("wallet_address, reputation_score, created_at")
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    // De-duplicate: keep only the latest score per wallet
-    const latestByWallet = {};
-    for (const r of (reputations ?? [])) {
-      if (!latestByWallet[r.wallet_address]) {
-        latestByWallet[r.wallet_address] = r;
-      }
-    }
-
-    // Sort by reputation_score descending
-    const leaderboard = Object.values(latestByWallet)
-      .sort((a, b) => b.reputation_score - a.reputation_score)
-      .slice(0, 50); // Top 50
-
-    res.json(leaderboard);
-  } catch (err) {
-    console.error("GET /api/events/leaderboard/reputation error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // ──────────────────────────────────────────────
 //  GET /api/events/reputation/:wallet — Get reputation for a specific wallet
