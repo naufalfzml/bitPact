@@ -10,7 +10,7 @@ interface Event {
   game_mode: "1v1" | "team" | "ffa";
   team_size: number;
   ticket_price: string;
-  status: "setup" | "active" | "voting" | "ended" | "disputed";
+  status: "setup" | "active" | "voting" | "ended" | "disputed" | "settlement_failed";
   access_type?: "public" | "password" | "invite_only";
   roster_locked?: boolean;
   participant_count: number;

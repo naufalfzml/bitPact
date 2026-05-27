@@ -32,12 +32,14 @@ interface EventDetail {
   ticket_price: string;
   consensus_threshold: number;
   photo_required: boolean;
-  status: "setup" | "active" | "voting" | "ended" | "disputed";
+  status: "setup" | "active" | "voting" | "ended" | "disputed" | "settlement_failed";
   creator_address: string;
   created_at: string;
   access_type: "public" | "password" | "invite_only";
   roster_locked?: boolean;
   max_participants?: number;
+  settlement_error?: string | null;
+  settlement_tx_hash?: string | null;
   participants: Participant[];
   brackets: BracketMatch[];
   voting: {
