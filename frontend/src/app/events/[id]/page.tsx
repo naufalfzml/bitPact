@@ -1391,9 +1391,10 @@ export default function EventDetailPage() {
               {event.status === "voting" && (
                 <div>
                   <p className="bp-card-copy bp-mb-md">
-                    The tournament is currently in the voting phase. Payout happens automatically once voting ends. If you want to settle it sooner, you can trigger manual prize distribution below after voter quorum is reached (&gt;51%).
+                    The tournament is currently in the voting phase. Payout happens
+                    automatically once voting ends.
                   </p>
-                  
+
                   {/* Quorum Progress bar */}
                   <div className="bp-surface-strip bp-mb-md" style={{ borderColor: "rgba(245, 232, 95, 0.34)" }}>
                     <div className="bp-flex bp-justify-between bp-text-xs bp-mb-xs">
@@ -1403,40 +1404,26 @@ export default function EventDetailPage() {
                       </span>
                     </div>
                     <div style={{ height: "10px", width: "100%", background: "#111", border: "1px solid rgba(114, 128, 168, 0.28)", overflow: "hidden" }}>
-                      <div 
-                        style={{ 
-                          height: "100%", 
-                          width: `${Math.min(100, votingPercent)}%`, 
-                          background: "var(--bp-success)" 
-                        }} 
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${Math.min(100, votingPercent)}%`,
+                          background: "var(--bp-success)"
+                        }}
                       />
                     </div>
                     <p className="bp-card-copy bp-mt-xs" style={{ fontSize: "0.78rem" }}>
-                      Total Votes: {event.voting.total} / {event.participants.length} Players. Minimum required to unlock button: 51%.
+                      Total Votes: {event.voting.total} / {event.participants.length} Players. Minimum quorum to settle: 51%.
                     </p>
                   </div>
 
+                  {/* Manual distribute lives in the Voting Console (vote page) so
+                      the creator sees ballot tallies + action in one screen. */}
                   <button
-                    className="bp-btn bp-btn-green bp-w-full"
-                    disabled={votingPercent < 51}
-                    onClick={async () => {
-                      if (!confirm("Trigger manual prize distribution based on the current consensus vote?")) return;
-                      try {
-                        const res = await fetch(`${API_BASE_URL}/events/${event.id}/distribute`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ creator_address: address }),
-                        });
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || "Failed to distribute prize");
-                        toast.success("Prize funds distributed successfully.");
-                        fetchEventDetail();
-                      } catch (err: any) {
-                        toast.error(`Distribution error: ${err.message}`);
-                      }
-                    }}
+                    className="bp-btn bp-btn-accent bp-w-full"
+                    onClick={() => router.push(`/events/${event.id}/vote`)}
                   >
-                    ■ DISTRIBUTE PRIZE ■
+                    ■ Open Voting Console to distribute ■
                   </button>
                 </div>
               )}
