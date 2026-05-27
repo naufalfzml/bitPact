@@ -3,6 +3,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import Link from "next/link";
 import ConnectButtonClient from "./components/ConnectButtonClient";
+import { ToastProvider } from "./components/Toast";
 
 export const metadata: Metadata = {
   title: "bitPact | 8-Bit Web3 Tournaments on Celo",
@@ -18,6 +19,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Providers>
+          <ToastProvider>
           <header className="bp-header">
             <div className="bp-header-inner">
               <div className="bp-header-brand">
@@ -65,6 +67,7 @@ export default function RootLayout({
               </div>
             </div>
           </footer>
+          </ToastProvider>
         </Providers>
       </body>
     </html>
