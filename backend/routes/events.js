@@ -953,30 +953,24 @@ router.post("/:id/bracket/advance", async (req, res) => {
         .eq("wallet_address", loser);
     }
 
-    // Check if all matches in current round are complete
+    // Check if all matches in current round are complete.
+    // Order by match_index so pairing for the next round is deterministic
+    // regardless of Postgres return order (bracket-determinism spec).
     const { data: currentRoundMatches } = await supabase
       .from("brackets")
       .select("*")
       .eq("event_id", id)
-      .eq("round", match.round);
+      .eq("round", match.round)
+      .order("match_index", { ascending: true });
 
     const allComplete = currentRoundMatches?.every((m) => m.winner !== null);
 
     if (allComplete && currentRoundMatches.length > 1) {
-      // Generate next round
-      const winners = currentRoundMatches.map((m) => m.winner);
-      const nextRound = match.round + 1;
-      const nextBrackets = [];
-
-      for (let i = 0; i < winners.length; i += 2) {
-        nextBrackets.push({
-          event_id: id,
-          round: nextRound,
-          match_index: Math.floor(i / 2),
-          player_a: winners[i],
-          player_b: winners[i + 1] || null, // bye if odd
-        });
-      }
+      const nextBrackets = generateNextRoundBrackets(
+        currentRoundMatches,
+        id,
+        match.round + 1
+      );
 
       const { error: nextErr } = await supabase
         .from("brackets")
@@ -1385,6 +1379,34 @@ function authorizeRetrySettlement(event, callerAddress, adminAddress) {
   return { ok: true };
 }
 
+/**
+ * Build the next round of bracket matches from completed-round matches.
+ *
+ * Sorts the input by `match_index` ascending (defensively — the SQL query
+ * already orders, but the helper stays correct under any input order) and
+ * pairs winners[i] with winners[i+1]. Odd winner gets a BYE (player_b = null).
+ *
+ * Pure function — no DB calls — so it can be unit-tested in isolation.
+ */
+function generateNextRoundBrackets(currentRoundMatches, eventId, nextRound) {
+  const ordered = [...(currentRoundMatches || [])].sort(
+    (a, b) => a.match_index - b.match_index
+  );
+  const winners = ordered.map((m) => m.winner);
+
+  const nextBrackets = [];
+  for (let i = 0; i < winners.length; i += 2) {
+    nextBrackets.push({
+      event_id: eventId,
+      round: nextRound,
+      match_index: Math.floor(i / 2),
+      player_a: winners[i],
+      player_b: winners[i + 1] || null, // bye if odd
+    });
+  }
+  return nextBrackets;
+}
+
 function getStartBracketGuardError(event, brackets) {
   if (event.game_mode === "ffa") return null;
   if (!brackets || brackets.length === 0) {
@@ -1587,3 +1609,4 @@ module.exports.settleEvent = settleEvent;
 module.exports.authorizeRetrySettlement = authorizeRetrySettlement;
 module.exports.getStartBracketGuardError = getStartBracketGuardError;
 module.exports.applyMinorityPenalty = applyMinorityPenalty;
+module.exports.generateNextRoundBrackets = generateNextRoundBrackets;
