@@ -1308,8 +1308,21 @@ textarea {
     font-size: 0.82rem;
   }
 
+  /* MiniPay = mobile-first. HP / USDC / CELO is the most relevant info
+     a connected player needs to see, so keep it visible — move it to a
+     compact strip below the header brand instead of hiding it. */
   .bp-rpg-status {
-    display: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    justify-content: flex-start;
+    padding: 6px 0;
+    font-size: 0.5rem;
+  }
+
+  .bp-rpg-status > * {
+    flex: 0 1 auto;
   }
 
   .bp-hero {
