@@ -16,7 +16,7 @@ interface Participant {
 interface EventDetail {
   id: string;
   title: string;
-  status: "setup" | "active" | "voting" | "ended" | "disputed";
+  status: "setup" | "active" | "voting" | "ended" | "disputed" | "settlement_failed";
   consensus_threshold: number;
   creator_address: string;
   participants: Participant[];
@@ -26,6 +26,7 @@ interface EventDetail {
     reject: number;
     percentage: string | null;
   };
+  my_vote?: "agree" | "reject" | null;
 }
 
 export default function VotingConsolePage() {
@@ -45,7 +46,11 @@ export default function VotingConsolePage() {
 
   const fetchEventDetail = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/events/${id}`);
+      // Pass ?wallet=... so the backend returns `my_vote` for the connected voter.
+      const url = address
+        ? `${API_BASE_URL}/events/${id}?wallet=${address.toLowerCase()}`
+        : `${API_BASE_URL}/events/${id}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to load tournament");
       const data = await res.json();
       setEvent(data);
@@ -61,7 +66,9 @@ export default function VotingConsolePage() {
     if (id) {
       fetchEventDetail();
     }
-  }, [id]);
+    // Re-fetch when wallet connects/changes so `my_vote` reflects the current voter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, address]);
 
   if (loading) {
     return <div className="bp-text-center bp-blink bp-text-primary" style={{ padding: "80px 0" }}>SYNCHRONIZING_VOTING_CHANNELS...</div>;
@@ -195,6 +202,20 @@ export default function VotingConsolePage() {
               AUDITING MODE ONLY
               <p className="bp-card-copy bp-mt-sm">
                 Your wallet is not registered in this tournament. You may watch live consensus stats, but cannot submit votes.
+              </p>
+            </div>
+          ) : event.my_vote ? (
+            <div
+              className={event.my_vote === "agree" ? "bp-card bp-panel-success bp-text-center" : "bp-card bp-panel-destructive bp-text-center"}
+              style={{ marginBottom: "var(--bp-space-lg)" }}
+            >
+              <p className={event.my_vote === "agree" ? "bp-text-green" : "bp-text-red"} style={{ fontSize: "0.7rem" }}>
+                ■ YOU VOTED {event.my_vote.toUpperCase()} ■
+              </p>
+              <p className="bp-card-copy bp-mt-sm">
+                {event.my_vote === "agree"
+                  ? "If consensus passes the threshold, the prize will be distributed."
+                  : "If consensus rejects, all participants will be refunded."}
               </p>
             </div>
           ) : (
