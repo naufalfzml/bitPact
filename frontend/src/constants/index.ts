@@ -1,5 +1,22 @@
 export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`;
-export const USDC_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_CUSD_TOKEN_ADDRESS || "0x01C5C0122039549AD1493B8220cABEdD739BC44E") as `0x${string}`;
+
+// USDC native token address. Prefer NEXT_PUBLIC_USDC_TOKEN_ADDRESS; fall back
+// to the legacy NEXT_PUBLIC_CUSD_TOKEN_ADDRESS name for older .env files,
+// then to the Celo Sepolia default for new dev setups.
+const _legacyCusd = process.env.NEXT_PUBLIC_CUSD_TOKEN_ADDRESS;
+if (typeof window !== "undefined" && !process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS && _legacyCusd) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    "[bitPact] NEXT_PUBLIC_CUSD_TOKEN_ADDRESS is deprecated — rename it to " +
+      "NEXT_PUBLIC_USDC_TOKEN_ADDRESS in your .env."
+  );
+}
+export const USDC_TOKEN_ADDRESS = (
+  process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS ||
+  _legacyCusd ||
+  "0x01C5C0122039549AD1493B8220cABEdD739BC44E"
+) as `0x${string}`;
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 /**
