@@ -7,7 +7,7 @@ export const VAULT_ABI = [
     type: "constructor",
     inputs: [
       { name: "_admin", type: "address", internalType: "address" },
-      { name: "_cUSD", type: "address", internalType: "address" }
+      { name: "_usdc", type: "address", internalType: "address" }
     ],
     stateMutability: "nonpayable"
   },
@@ -20,7 +20,7 @@ export const VAULT_ABI = [
   },
   {
     type: "function",
-    name: "cUSD",
+    name: "usdc",
     inputs: [],
     outputs: [{ name: "", type: "address", internalType: "contract IERC20" }],
     stateMutability: "view"
