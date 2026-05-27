@@ -54,12 +54,15 @@ export default function CreateEventPage() {
       : undefined;
 
     try {
+      // `game_mode` is intentionally NOT sent here. The real mode is chosen
+      // later by the creator via `/select-game-mode` after roster lock. The
+      // backend default ("1v1") is treated as a placeholder until then;
+      // the UI hides the mode badge while status === "setup" && !roster_locked.
       const res = await fetch(`${API_BASE_URL}/events`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
-          game_mode: "1v1",
           max_participants: Number(maxParticipants),
           ticket_price: ticketPrice,
           photo_required: photoRequired,

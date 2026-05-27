@@ -606,9 +606,15 @@ export default function EventDetailPage() {
       <section className="bp-card bp-overview-card">
         <div className="bp-flex bp-justify-between bp-items-center bp-gap-sm" style={{ flexWrap: "wrap" }}>
           <div className="bp-flex bp-gap-sm bp-items-center">
-            <span className={`bp-badge bp-badge-${event.game_mode}`}>
-              {event.game_mode} {event.game_mode === "team" ? `(${event.team_size}v${event.team_size})` : ""}
-            </span>
+            {/* game_mode is tentative until creator picks it via /select-game-mode
+                (post roster_locked). Show neutral "SETUP" badge before that. */}
+            {event.status === "setup" && !event.roster_locked ? (
+              <span className="bp-badge bp-badge-setup">SETUP</span>
+            ) : (
+              <span className={`bp-badge bp-badge-${event.game_mode}`}>
+                {event.game_mode} {event.game_mode === "team" ? `(${event.team_size}v${event.team_size})` : ""}
+              </span>
+            )}
             {/* Access Type Badge */}
             {event.access_type === "password" && (
               <span className="bp-badge" style={{ borderColor: "var(--bp-warning)", color: "var(--bp-warning)", background: "rgba(255, 158, 79, 0.08)" }}>

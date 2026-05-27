@@ -12,6 +12,7 @@ interface Event {
   ticket_price: string;
   status: "setup" | "active" | "voting" | "ended" | "disputed";
   access_type?: "public" | "password" | "invite_only";
+  roster_locked?: boolean;
   participant_count: number;
   created_at: string;
 }
@@ -173,9 +174,16 @@ export default function HomePage() {
               <div key={event.id} className="bp-card bp-card-interactive bp-home-event-card">
                 <div className="bp-flex bp-justify-between bp-items-center bp-gap-sm" style={{ flexWrap: "wrap" }}>
                   <div className="bp-flex bp-gap-sm bp-items-center" style={{ flexWrap: "wrap" }}>
-                    <span className={`bp-badge bp-badge-${event.game_mode}`}>
-                      {event.game_mode} {event.game_mode === "team" ? `(${event.team_size}v${event.team_size})` : ""}
-                    </span>
+                    {/* game_mode is only meaningful after the creator picks it
+                        via /select-game-mode (post roster_locked). Until then,
+                        show a neutral SETUP badge to avoid pretense. */}
+                    {event.status === "setup" && !event.roster_locked ? (
+                      <span className="bp-badge bp-badge-setup">SETUP</span>
+                    ) : (
+                      <span className={`bp-badge bp-badge-${event.game_mode}`}>
+                        {event.game_mode} {event.game_mode === "team" ? `(${event.team_size}v${event.team_size})` : ""}
+                      </span>
+                    )}
                     {event.access_type === "password" && (
                       <span
                         className="bp-badge"
@@ -200,7 +208,11 @@ export default function HomePage() {
                     {event.title}
                   </h3>
                   <p className="bp-card-copy">
-                    Created {new Date(event.created_at).toLocaleDateString()} for {event.game_mode.toUpperCase()} competition with a clean payout route.
+                    Created {new Date(event.created_at).toLocaleDateString()}
+                    {event.status !== "setup" || event.roster_locked
+                      ? ` for ${event.game_mode.toUpperCase()} competition`
+                      : ""}
+                    {" "}with a clean payout route.
                   </p>
                 </div>
                 <div className="bp-home-event-meta">
