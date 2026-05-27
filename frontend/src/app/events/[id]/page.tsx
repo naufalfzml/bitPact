@@ -6,6 +6,7 @@ import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { parseUnits, keccak256, stringToBytes } from "viem";
 import { API_BASE_URL, VAULT_CONTRACT_ADDRESS, USDC_TOKEN_ADDRESS, VAULT_ABI, USDC_ABI, getTxExplorerUrl } from "@/constants";
 import { generateGamerTag } from "@/app/components/ConnectButtonClient";
+import { useToast } from "@/app/components/Toast";
 
 interface Participant {
   id: string;
@@ -60,6 +61,7 @@ export default function EventDetailPage() {
   const { address, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
+  const toast = useToast();
 
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -181,7 +183,7 @@ export default function EventDetailPage() {
   // ── Registration Flow ──
   const handleRegister = async (passwordOverride?: string) => {
     if (!isConnected || !address) {
-      alert("Please connect your wallet!");
+      toast.warning("Please connect your wallet first.");
       return;
     }
     setRegistering(true);
@@ -263,7 +265,7 @@ export default function EventDetailPage() {
       }, 2000);
     } catch (err: any) {
       console.error(err);
-      alert(`Registration Failed: ${err.message || "Unknown error"}`);
+      toast.error(`Registration failed: ${err.message || "Unknown error"}`);
       setStatusMessage("");
       setRegistering(false);
     }
@@ -286,11 +288,11 @@ export default function EventDetailPage() {
         const errData = await res.json();
         throw new Error(errData.error || "Failed to add to whitelist");
       }
-      alert(`${walletAddr.slice(0, 10)}... added to whitelist!`);
+      toast.success(`${walletAddr.slice(0, 10)}... added to whitelist.`);
       setWhitelistManualAddr("");
       fetchEventDetail();
     } catch (err: any) {
-      alert(`Whitelist Error: ${err.message}`);
+      toast.error(`Whitelist error: ${err.message}`);
     } finally {
       setAddingToWhitelist(false);
     }
@@ -326,13 +328,13 @@ export default function EventDetailPage() {
         });
         const startData = await startRes.json();
         if (!startRes.ok) throw new Error(startData.error || "Failed to start the FFA tournament");
-        alert("■ FFA TOURNAMENT OFFICIALLY STARTED ■");
+        toast.success("FFA tournament officially started.");
       } else {
-        alert("Format selected! An empty bracket draft has been created.");
+        toast.success("Format selected. An empty bracket draft has been created.");
       }
       fetchEventDetail();
     } catch (err: any) {
-      alert(`${selectedGameMode === "ffa" ? "Start Error" : "Generate Error"}: ${err.message}`);
+      toast.error(`${selectedGameMode === "ffa" ? "Start error" : "Generate error"}: ${err.message}`);
     } finally {
       setIsGeneratingBracket(false);
     }
@@ -380,10 +382,10 @@ export default function EventDetailPage() {
       });
 
       if (!res.ok) throw new Error("Failed to save bracket draft");
-      alert("Bracket draft auto-shuffled and saved!");
+      toast.success("Bracket draft auto-shuffled and saved.");
       fetchEventDetail();
     } catch (err: any) {
-      alert(`Shuffle Error: ${err.message}`);
+      toast.error(`Shuffle error: ${err.message}`);
     } finally {
       setIsSavingDraft(false);
     }
@@ -403,10 +405,10 @@ export default function EventDetailPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save bracket draft");
-      alert("Bracket draft saved!");
+      toast.success("Bracket draft saved.");
       fetchEventDetail();
     } catch (err: any) {
-      alert(`Save Error: ${err.message}`);
+      toast.error(`Save error: ${err.message}`);
     } finally {
       setIsSavingDraft(false);
     }
@@ -439,10 +441,10 @@ export default function EventDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to start tournament");
 
-      alert("■ TOURNAMENT OFFICIALLY STARTED ■");
+      toast.success("Tournament officially started.");
       fetchEventDetail();
     } catch (err: any) {
-      alert(`Start Error: ${err.message}`);
+      toast.error(`Start error: ${err.message}`);
     } finally {
       setIsStartingEvent(false);
     }
@@ -506,7 +508,7 @@ export default function EventDetailPage() {
       if (!res.ok) throw new Error("Failed to update winner");
       fetchEventDetail();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      toast.error(`Bracket update error: ${err.message}`);
     }
   };
 
@@ -521,7 +523,7 @@ export default function EventDetailPage() {
       if (!res.ok) throw new Error(data.error || "Failed to submit winners");
       fetchEventDetail();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      toast.error(`Submit winners error: ${err.message}`);
     }
   };
 
@@ -541,11 +543,11 @@ export default function EventDetailPage() {
         body: formData,
       });
       if (!res.ok) throw new Error("Failed to upload photo proof");
-      alert("Photo Proof uploaded successfully!");
+      toast.success("Photo proof uploaded successfully.");
       setPhotoFile(null);
       fetchEventDetail();
     } catch (err: any) {
-      alert(`Upload Error: ${err.message}`);
+      toast.error(`Upload error: ${err.message}`);
     } finally {
       setUploadingPhoto(false);
     }
@@ -563,11 +565,11 @@ export default function EventDetailPage() {
         body: JSON.stringify({ winners: list }),
       });
       if (!res.ok) throw new Error("Failed to submit appeal");
-      alert("Appeal successfully submitted! Voting reopened.");
+      toast.success("Appeal submitted. Voting has been reopened.");
       setAppealWinners("");
       fetchEventDetail();
     } catch (err: any) {
-      alert(`Appeal Error: ${err.message}`);
+      toast.error(`Appeal error: ${err.message}`);
     }
   };
 
@@ -1106,7 +1108,7 @@ export default function EventDetailPage() {
                                   });
                                   if (!res.ok) throw new Error("Failed");
                                   fetchEventDetail();
-                                } catch { alert("Failed to remove participant"); }
+                                } catch { toast.error("Failed to remove participant."); }
                               }}
                             >
                               ■ DEL ■
@@ -1146,10 +1148,10 @@ export default function EventDetailPage() {
                         });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || "Failed to lock roster");
-                        alert(`Registration closed! The participant roster has been locked permanently.`);
+                        toast.success("Registration closed. The participant roster is locked.");
                         fetchEventDetail();
                       } catch (err: any) {
-                        alert(`Error: ${err.message}`);
+                        toast.error(`Lock roster error: ${err.message}`);
                       }
                     }}
                   >
@@ -1344,7 +1346,7 @@ export default function EventDetailPage() {
                     onClick={() => {
                       const list = [ffaWinner1, ffaWinner2, ffaWinner3].filter(Boolean);
                       if (list.length === 0) {
-                        alert("Must enter at least one winner!");
+                        toast.warning("Enter at least one winner wallet.");
                         return;
                       }
                       handleSubmitWinners(list);
@@ -1427,10 +1429,10 @@ export default function EventDetailPage() {
                         });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || "Failed to distribute prize");
-                        alert("■ PRIZE FUNDS DISTRIBUTED SUCCESSFULLY! ■");
+                        toast.success("Prize funds distributed successfully.");
                         fetchEventDetail();
                       } catch (err: any) {
-                        alert(`Distribution Error: ${err.message}`);
+                        toast.error(`Distribution error: ${err.message}`);
                       }
                     }}
                   >

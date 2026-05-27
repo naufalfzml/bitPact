@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { API_BASE_URL } from "@/constants";
 import { generateGamerTag } from "@/app/components/ConnectButtonClient";
+import { useToast } from "@/app/components/Toast";
 
 interface Participant {
   id: string;
@@ -33,6 +34,7 @@ export default function VotingConsolePage() {
   const id = params.id as string;
 
   const { address, isConnected } = useAccount();
+  const toast = useToast();
 
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,11 +92,11 @@ export default function VotingConsolePage() {
 
   const handleVote = async (isValid: boolean) => {
     if (!isConnected || !address) {
-      alert("Please connect your wallet!");
+      toast.warning("Please connect your wallet first.");
       return;
     }
     if (!isParticipant) {
-      alert("Only registered participants of this tournament can vote!");
+      toast.warning("Only registered participants of this tournament can vote.");
       return;
     }
 
@@ -233,10 +235,10 @@ export default function VotingConsolePage() {
                     });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || "Failed to distribute prize");
-                    alert("Prize distributed successfully!");
+                    toast.success("Prize distributed successfully.");
                     fetchEventDetail();
                   } catch (err: any) {
-                    alert(`Error: ${err.message}`);
+                    toast.error(`Distribution error: ${err.message}`);
                   } finally {
                     setDistributing(false);
                   }
