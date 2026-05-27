@@ -4,6 +4,7 @@ import { Providers } from "./providers";
 import Link from "next/link";
 import ConnectButtonClient from "./components/ConnectButtonClient";
 import { ToastProvider } from "./components/Toast";
+import LogoMark from "./components/LogoMark";
 
 export const metadata: Metadata = {
   title: "bitPact | 8-Bit Web3 Tournaments on Celo",
@@ -23,10 +24,8 @@ export default function RootLayout({
           <header className="bp-header">
             <div className="bp-header-inner">
               <div className="bp-header-brand">
-                <Link href="/" className="bp-logo">
-                  <span className="bp-logo-mark">■</span>
-                  <span>_bP_</span>
-                  <span className="bp-logo-mark">■</span>
+                <Link href="/" className="bp-logo" aria-label="bitPact home">
+                  <LogoMark size="md" />
                 </Link>
                 <p className="bp-header-tagline">
                   Retro escrow tournaments with clearer roles for players, creators, and live ops.
