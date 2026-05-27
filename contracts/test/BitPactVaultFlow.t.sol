@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {BitPactVault} from "../src/BitPactVault.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {MockBlacklistedUSDC} from "./mocks/MockBlacklistedUSDC.sol";
 
 /// @dev Mock USDC with 6 decimals (mirrors native Circle USDC on Celo)
 contract MockUSDC is ERC20 {
@@ -181,6 +182,110 @@ contract BitPactVaultFlowTest is Test {
         vault.distributePrize(eventId, winners, shares); // does NOT revert
         (, , , bool distributed, ) = vault.getEventInfo(eventId);
         assertTrue(distributed);
+    }
+
+    // ──────────────────────────────────────────────
+    //  Characterization: USDC blacklist causes whole-batch revert
+    //
+    //  Documents the "Known Risk" we publish in contracts/README.md:
+    //  Circle USDC can blacklist any address. Because distributePrize and
+    //  emergencyRefund transfer in a loop and revert on first failure,
+    //  a single blacklisted winner / participant freezes the whole pool
+    //  until creator routes recovery through `disputed` + `appeal`, or
+    //  backend triggers `settlement_failed` retry with different inputs.
+    // ──────────────────────────────────────────────
+
+    function test_flow_blacklistedRecipient_revertsBatchDistribute() public {
+        MockBlacklistedUSDC blUsdc = new MockBlacklistedUSDC();
+        BitPactVault freshVault = new BitPactVault(admin, address(blUsdc));
+
+        // Mint + approve 3 players
+        address[3] memory players = [alice, bob, carol];
+        for (uint256 i; i < players.length; ++i) {
+            blUsdc.mint(players[i], 100_000_000);
+            vm.prank(players[i]);
+            blUsdc.approve(address(freshVault), type(uint256).max);
+        }
+
+        bytes32 freshEvent = keccak256("fresh-blacklist-distribute");
+        vm.prank(admin);
+        freshVault.createEvent(freshEvent, ticketPrice, creator);
+
+        // All three register normally
+        vm.prank(alice);
+        freshVault.register(freshEvent);
+        vm.prank(bob);
+        freshVault.register(freshEvent);
+        vm.prank(carol);
+        freshVault.register(freshEvent);
+
+        uint256 aliceBefore = blUsdc.balanceOf(alice);
+        uint256 bobBefore = blUsdc.balanceOf(bob);
+        uint256 carolBefore = blUsdc.balanceOf(carol);
+
+        // Circle blacklists `bob` AFTER deposit
+        blUsdc.blacklist(bob);
+
+        address[] memory winners = new address[](3);
+        winners[0] = alice;
+        winners[1] = bob;
+        winners[2] = carol;
+        uint256[] memory shares = new uint256[](3);
+        shares[0] = ticketPrice;
+        shares[1] = ticketPrice;
+        shares[2] = ticketPrice;
+
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(MockBlacklistedUSDC.BlacklistedRecipient.selector, bob)
+        );
+        freshVault.distributePrize(freshEvent, winners, shares);
+
+        // Whole batch reverted: nobody got paid, event not distributed,
+        // pool still trapped in vault.
+        assertEq(blUsdc.balanceOf(alice), aliceBefore, "alice unchanged");
+        assertEq(blUsdc.balanceOf(bob), bobBefore, "bob unchanged");
+        assertEq(blUsdc.balanceOf(carol), carolBefore, "carol unchanged");
+        (, , uint256 pool, bool distributed, ) = freshVault.getEventInfo(freshEvent);
+        assertEq(pool, ticketPrice * 3, "pool still locked");
+        assertFalse(distributed, "event not marked distributed");
+    }
+
+    function test_flow_blacklistedRecipient_revertsBatchRefund() public {
+        MockBlacklistedUSDC blUsdc = new MockBlacklistedUSDC();
+        BitPactVault freshVault = new BitPactVault(admin, address(blUsdc));
+
+        address[3] memory players = [alice, bob, carol];
+        for (uint256 i; i < players.length; ++i) {
+            blUsdc.mint(players[i], 100_000_000);
+            vm.prank(players[i]);
+            blUsdc.approve(address(freshVault), type(uint256).max);
+        }
+
+        bytes32 freshEvent = keccak256("fresh-blacklist-refund");
+        vm.prank(admin);
+        freshVault.createEvent(freshEvent, ticketPrice, creator);
+
+        vm.prank(alice);
+        freshVault.register(freshEvent);
+        vm.prank(bob);
+        freshVault.register(freshEvent);
+        vm.prank(carol);
+        freshVault.register(freshEvent);
+
+        // Circle blacklists `carol` AFTER deposit
+        blUsdc.blacklist(carol);
+
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(MockBlacklistedUSDC.BlacklistedRecipient.selector, carol)
+        );
+        freshVault.emergencyRefund(freshEvent);
+
+        // Funds stay locked — refund never partial.
+        (, , uint256 pool, bool distributed, ) = freshVault.getEventInfo(freshEvent);
+        assertEq(pool, ticketPrice * 3, "pool still locked");
+        assertFalse(distributed, "event not marked distributed");
     }
 
     // ──────────────────────────────────────────────
