@@ -528,9 +528,31 @@ export default function EventDetailPage() {
   };
 
   // ── Photo Audit Upload Flow ──
+  const PHOTO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB, mirrored on the backend
+
+  const handlePhotoFileChange = (file: File | null) => {
+    if (!file) {
+      setPhotoFile(null);
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Only image files are allowed.");
+      return;
+    }
+    if (file.size > PHOTO_MAX_BYTES) {
+      toast.error("Photo must be 5MB or smaller.");
+      return;
+    }
+    setPhotoFile(file);
+  };
+
   const handlePhotoUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!photoFile || !address) return;
+    if (photoFile.size > PHOTO_MAX_BYTES) {
+      toast.error("Photo must be 5MB or smaller.");
+      return;
+    }
 
     setUploadingPhoto(true);
     const formData = new FormData();
@@ -542,7 +564,10 @@ export default function EventDetailPage() {
         method: "POST",
         body: formData,
       });
-      if (!res.ok) throw new Error("Failed to upload photo proof");
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.error || "Failed to upload photo proof");
+      }
       toast.success("Photo proof uploaded successfully.");
       setPhotoFile(null);
       fetchEventDetail();
@@ -896,10 +921,30 @@ export default function EventDetailPage() {
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                    onChange={(e) => handlePhotoFileChange(e.target.files?.[0] || null)}
                     required
                     style={{ fontFamily: "var(--bp-font)", fontSize: "0.5rem" }}
                   />
+                  {photoFile && (
+                    <div style={{ marginTop: "6px" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={URL.createObjectURL(photoFile)}
+                        alt="Selected photo preview"
+                        style={{
+                          maxWidth: "200px",
+                          maxHeight: "200px",
+                          border: "2px solid rgba(245, 232, 95, 0.5)",
+                          imageRendering: "pixelated",
+                          display: "block",
+                        }}
+                      />
+                      <p className="bp-text-xs bp-text-muted" style={{ marginTop: "4px" }}>
+                        {photoFile.name} · {(photoFile.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                  )}
+                  <p className="bp-text-xs bp-text-muted">Max 5 MB. Images only.</p>
                   <button
                     type="submit"
                     className="bp-btn bp-btn-accent"

@@ -1021,45 +1021,68 @@ router.get("/:id/bracket", async (req, res) => {
 //  POST /api/events/:id/photo
 // ──────────────────────────────────────────────
 const multer = require("multer");
-const upload = multer({ storage: multer.memoryStorage() });
-
-router.post("/:id/photo", upload.single("photo"), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { wallet_address } = req.body;
-
-    if (!wallet_address || !req.file) {
-      return res.status(400).json({ error: "Missing wallet_address or photo file" });
+const PHOTO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB, mirrored on the frontend
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: PHOTO_MAX_BYTES },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image uploads are allowed"));
     }
-
-    // Upload to Supabase Storage
-    const fileName = `${id}/${wallet_address}-${Date.now()}.${req.file.originalname?.split(".").pop() || "jpg"}`;
-
-    const { error: uploadErr } = await supabase.storage
-      .from("photos")
-      .upload(fileName, req.file.buffer, {
-        contentType: req.file.mimetype,
-      });
-
-    if (uploadErr) throw uploadErr;
-
-    const { data: urlData } = supabase.storage.from("photos").getPublicUrl(fileName);
-
-    // Update participant photo URL
-    const { error: updateErr } = await supabase
-      .from("participants")
-      .update({ uploaded_photo_url: urlData.publicUrl })
-      .eq("event_id", id)
-      .eq("wallet_address", wallet_address);
-
-    if (updateErr) throw updateErr;
-
-    res.json({ url: urlData.publicUrl });
-  } catch (err) {
-    console.error("POST /api/events/:id/photo error:", err);
-    res.status(500).json({ error: err.message });
-  }
+  },
 });
+
+router.post(
+  "/:id/photo",
+  (req, res, next) => {
+    upload.single("photo")(req, res, (err) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({ error: "Photo must be 5MB or smaller" });
+      }
+      return res.status(400).json({ error: err.message || "Photo upload rejected" });
+    });
+  },
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { wallet_address } = req.body;
+
+      if (!wallet_address || !req.file) {
+        return res.status(400).json({ error: "Missing wallet_address or photo file" });
+      }
+
+      // Upload to Supabase Storage
+      const fileName = `${id}/${wallet_address}-${Date.now()}.${req.file.originalname?.split(".").pop() || "jpg"}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from("photos")
+        .upload(fileName, req.file.buffer, {
+          contentType: req.file.mimetype,
+        });
+
+      if (uploadErr) throw uploadErr;
+
+      const { data: urlData } = supabase.storage.from("photos").getPublicUrl(fileName);
+
+      // Update participant photo URL
+      const { error: updateErr } = await supabase
+        .from("participants")
+        .update({ uploaded_photo_url: urlData.publicUrl })
+        .eq("event_id", id)
+        .eq("wallet_address", wallet_address);
+
+      if (updateErr) throw updateErr;
+
+      res.json({ url: urlData.publicUrl });
+    } catch (err) {
+      console.error("POST /api/events/:id/photo error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 // ──────────────────────────────────────────────
 //  POST /api/events/:id/end — Submit winners
