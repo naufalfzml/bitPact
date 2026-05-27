@@ -150,6 +150,9 @@ router.get("/", async (_req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const walletQuery = typeof req.query.wallet === "string"
+      ? req.query.wallet.toLowerCase()
+      : null;
 
     const { data: event, error: eventErr } = await supabase
       .from("events")
@@ -185,6 +188,10 @@ router.get("/:id", async (req, res) => {
     const agreeVotes = votes?.filter((v) => v.is_valid).length ?? 0;
     const rejectVotes = totalVotes - agreeVotes;
 
+    // Resolve `my_vote` for the caller when ?wallet=0x... is provided so the
+    // vote page can render "you already voted" state without an extra round-trip.
+    const myVote = resolveMyVote(votes, walletQuery);
+
     res.json({
       ...event,
       participants: participants ?? [],
@@ -195,6 +202,7 @@ router.get("/:id", async (req, res) => {
         reject: rejectVotes,
         percentage: totalVotes > 0 ? ((agreeVotes / totalVotes) * 100).toFixed(1) : null,
       },
+      my_vote: myVote,
     });
   } catch (err) {
     console.error("GET /api/events/:id error:", err);
@@ -1407,6 +1415,22 @@ function generateNextRoundBrackets(currentRoundMatches, eventId, nextRound) {
   return nextBrackets;
 }
 
+/**
+ * Compute `my_vote` for a wallet on an event from the vote rows. Returns
+ * `"agree" | "reject" | null` and matches addresses case-insensitively.
+ * Pure helper — unit-tested in `test/myVote.test.js`.
+ */
+function resolveMyVote(votes, walletAddress) {
+  if (!walletAddress || !Array.isArray(votes)) return null;
+  const target = String(walletAddress).toLowerCase();
+  const own = votes.find(
+    (v) => typeof v?.voter_address === "string" &&
+      v.voter_address.toLowerCase() === target
+  );
+  if (!own) return null;
+  return own.is_valid ? "agree" : "reject";
+}
+
 function getStartBracketGuardError(event, brackets) {
   if (event.game_mode === "ffa") return null;
   if (!brackets || brackets.length === 0) {
@@ -1578,3 +1602,4 @@ module.exports.authorizeRetrySettlement = authorizeRetrySettlement;
 module.exports.getStartBracketGuardError = getStartBracketGuardError;
 module.exports.applyMinorityPenalty = applyMinorityPenalty;
 module.exports.generateNextRoundBrackets = generateNextRoundBrackets;
+module.exports.resolveMyVote = resolveMyVote;
