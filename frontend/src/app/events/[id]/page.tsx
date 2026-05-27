@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { parseUnits, keccak256, stringToBytes } from "viem";
-import { API_BASE_URL, VAULT_CONTRACT_ADDRESS, USDC_TOKEN_ADDRESS, VAULT_ABI, USDC_ABI } from "@/constants";
+import { API_BASE_URL, VAULT_CONTRACT_ADDRESS, USDC_TOKEN_ADDRESS, VAULT_ABI, USDC_ABI, getTxExplorerUrl } from "@/constants";
 import { generateGamerTag } from "@/app/components/ConnectButtonClient";
 
 interface Participant {
@@ -67,6 +67,10 @@ export default function EventDetailPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Settlement recovery state (status === "settlement_failed")
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
 
   // Manual Winner inputs for FFA Mode
   const [ffaWinner1, setFfaWinner1] = useState("");
@@ -567,6 +571,28 @@ export default function EventDetailPage() {
     }
   };
 
+  // ── Retry settlement (creator-only, status === "settlement_failed") ──
+  const handleRetrySettlement = async () => {
+    if (!event || !address) return;
+    setIsRetrying(true);
+    setRetryError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/events/${event.id}/retry-settlement`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caller_address: address }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.detail || "Retry failed");
+      await fetchEventDetail();
+    } catch (err: any) {
+      console.error("Retry settlement error:", err);
+      setRetryError(err.message || "Retry failed");
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   // ── Social Connect Lookup Flow ──
   const handleSocialLookup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -653,6 +679,64 @@ export default function EventDetailPage() {
           </div>
         </div>
       </section>
+
+      {event.status === "settlement_failed" && (
+        <section className="bp-settlement-banner">
+          <h3 className="bp-card-title bp-blink" data-tone="destructive">
+            ■ SETTLEMENT FAILED ■
+          </h3>
+          <p className="bp-card-copy bp-mt-sm">
+            The on-chain payout transaction reverted. Funds are still safe in the
+            vault and the event has NOT been marked ended. The creator can retry
+            below.
+          </p>
+          {event.settlement_error && (
+            <pre
+              className="bp-mt-md"
+              style={{
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                background: "rgba(7, 10, 21, 0.85)",
+                border: "1px solid rgba(255, 92, 122, 0.4)",
+                padding: "10px 12px",
+                fontSize: "0.6rem",
+                fontFamily: "var(--bp-font-body)",
+              }}
+            >
+              {event.settlement_error}
+            </pre>
+          )}
+          {event.settlement_tx_hash && (
+            <p className="bp-mt-sm">
+              <a
+                href={getTxExplorerUrl(event.settlement_tx_hash)}
+                target="_blank"
+                rel="noreferrer"
+                className="bp-text-xs bp-text-info"
+                style={{ textDecoration: "underline" }}
+              >
+                View failed transaction on Blockscout
+              </a>
+            </p>
+          )}
+          {isCreator && (
+            <div className="bp-mt-md">
+              <button
+                className="bp-btn bp-btn-accent"
+                disabled={isRetrying}
+                onClick={handleRetrySettlement}
+              >
+                {isRetrying ? "■ RETRYING... ■" : "■ RETRY SETTLEMENT ■"}
+              </button>
+              {retryError && (
+                <p className="bp-text-xs bp-text-red bp-mt-sm" style={{ wordBreak: "break-word" }}>
+                  Retry error: {retryError}
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="bp-dashboard-layout">
         <div className="bp-flex bp-flex-col bp-gap-lg">
@@ -1376,8 +1460,13 @@ export default function EventDetailPage() {
                 </div>
               )}
 
-              {!["setup", "active", "voting", "disputed"].includes(event.status) && (
+              {!["setup", "active", "voting", "disputed", "settlement_failed"].includes(event.status) && (
                 <p className="bp-text-xs bp-text-muted">No admin actions required in state {event.status}.</p>
+              )}
+              {event.status === "settlement_failed" && (
+                <p className="bp-text-xs bp-text-muted">
+                  Settlement failed — recovery actions are in the red banner at the top of this page.
+                </p>
               )}
             </div>
           )}

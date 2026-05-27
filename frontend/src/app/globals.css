@@ -1108,6 +1108,19 @@ textarea {
   background: rgba(255, 158, 79, 0.08);
 }
 
+.bp-settlement-banner {
+  margin-bottom: var(--bp-space-lg);
+  padding: var(--bp-space-lg);
+  background: rgba(255, 92, 122, 0.08);
+  border: 3px double var(--bp-destructive);
+  box-shadow: var(--bp-shadow-destructive);
+  color: var(--bp-white);
+}
+
+.bp-settlement-banner h3 {
+  color: var(--bp-destructive);
+}
+
 .bp-btn-delete {
   padding: 8px 10px;
   border: 1px solid rgba(255, 92, 122, 0.7);
