@@ -775,14 +775,14 @@ export default function EventDetailPage() {
                 {/* Creator Restriction: block creators from registering */}
                 {isCreator ? (
                   <div className="bp-card bp-panel-destructive bp-text-center">
-                    <p className="bp-text-red bp-text-sm" style={{ letterSpacing: "1px" }}>■ KREATUR TIDAK BISA IKUT BERMAIN ■</p>
+                    <p className="bp-text-red bp-text-sm" style={{ letterSpacing: "1px" }}>■ CREATOR CANNOT PLAY ■</p>
                     <p className="bp-card-copy bp-mt-sm">
                       As the organizer or jury, you cannot participate in a tournament you created yourself.
                     </p>
                   </div>
                 ) : event.roster_locked ? (
                   <div className="bp-card bp-panel-warning bp-text-center">
-                    <p className="bp-text-accent bp-text-sm" style={{ letterSpacing: "1px" }}>■ REGISTRASI DITUTUP ■</p>
+                    <p className="bp-text-accent bp-text-sm" style={{ letterSpacing: "1px" }}>■ REGISTRATION CLOSED ■</p>
                     <p className="bp-card-copy bp-mt-sm">
                       Registration has been closed by the organizer. The tournament is currently in the bracket drafting phase.
                     </p>
@@ -794,7 +794,7 @@ export default function EventDetailPage() {
                   </div>
                 ) : event.max_participants && event.participants.length >= event.max_participants ? (
                   <div className="bp-card bp-panel-destructive bp-text-center">
-                    <p className="bp-text-red bp-text-sm" style={{ letterSpacing: "1px" }}>■ SLOT PENUH ■</p>
+                    <p className="bp-text-red bp-text-sm" style={{ letterSpacing: "1px" }}>■ SLOTS FULL ■</p>
                     <p className="bp-card-copy bp-mt-sm">
                       The tournament has reached its maximum capacity ({event.max_participants} registrants).
                     </p>
@@ -832,7 +832,7 @@ export default function EventDetailPage() {
                 ) : event.access_type === "invite_only" && !isWhitelisted ? (
                   /* Invite-only: user not on whitelist — RED denied banner */
                   <div className="bp-whitelist-banner denied">
-                    ■ AKSES TERBATAS: ANDA TIDAK DIUNDANG ■
+                    ■ RESTRICTED: YOU ARE NOT INVITED ■
                     <p className="bp-card-copy bp-mt-sm" style={{ color: "var(--bp-muted)" }}>
                       This tournament is for invited participants only. Contact the organizer to request access.
                     </p>
@@ -843,7 +843,7 @@ export default function EventDetailPage() {
                     {/* Whitelist approved banner for invite-only events */}
                     {event.access_type === "invite_only" && isWhitelisted && (
                       <div className="bp-whitelist-banner approved">
-                        ■ ANDA TERDAFTAR DI WHITELIST ■
+                        ■ YOU ARE WHITELISTED ■
                       </div>
                     )}
                     <p className="bp-card-copy bp-mb-md">
@@ -1003,7 +1003,7 @@ export default function EventDetailPage() {
                     <input
                       type="text"
                       className="bp-input bp-text-xs"
-                      placeholder="email@contoh.com atau +628..."
+                      placeholder="email@example.com or +123..."
                       value={socialInput}
                       onChange={(e) => {
                         setSocialInput(e.target.value);
@@ -1038,7 +1038,7 @@ export default function EventDetailPage() {
                         }}
                         disabled={addingToWhitelist}
                       >
-                        {addingToWhitelist ? "MENAMBAHKAN..." : "■ TAMBAHKAN KE WHITELIST ■"}
+                        {addingToWhitelist ? "ADDING..." : "■ ADD TO WHITELIST ■"}
                       </button>
                     </div>
                   )}
@@ -1246,7 +1246,7 @@ export default function EventDetailPage() {
                     /* Draft Bracket Panel */
                     <div>
                       <div className="bp-flex bp-justify-between bp-items-center bp-mb-md">
-                        <span className="bp-text-xs bp-text-primary">DRAF MATCHUP RONDE 1</span>
+                        <span className="bp-text-xs bp-text-primary">ROUND 1 MATCH DRAFT</span>
                         <span className="bp-badge bp-badge-setup" style={{ fontSize: "0.4rem" }}>DRAFTING</span>
                       </div>
 

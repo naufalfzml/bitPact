@@ -242,7 +242,7 @@ router.post("/:id/register", async (req, res) => {
       return res.status(400).json({ error: "Event registration is closed" });
     }
     if (event.roster_locked) {
-      return res.status(400).json({ error: "Pendaftaran turnamen ini sudah ditutup (Roster Locked)" });
+      return res.status(400).json({ error: "Registration is closed (roster locked)" });
     }
 
     // Check participant limit
@@ -252,12 +252,12 @@ router.post("/:id/register", async (req, res) => {
       .eq("event_id", id);
     const currentCount = participantsForLimit?.length ?? 0;
     if (event.max_participants && currentCount >= event.max_participants) {
-      return res.status(400).json({ error: `Pendaftaran ditolak. Kapasitas maksimum turnamen (${event.max_participants}) sudah terpenuhi.` });
+      return res.status(400).json({ error: `Registration rejected. Tournament is full (${event.max_participants} participants).` });
     }
 
     // ── Creator Restriction Guard ──
     if (wallet_address.toLowerCase() === event.creator_address.toLowerCase()) {
-      return res.status(403).json({ error: "Kreator tidak diizinkan untuk mendaftar ke turnamen buatan sendiri" });
+      return res.status(403).json({ error: "Creator cannot register to their own tournament" });
     }
 
     // ── Reputation Guard Check (HP/Reputation Score must be >= 50) ──
@@ -266,18 +266,18 @@ router.post("/:id/register", async (req, res) => {
     
     if (currentReputation < 50) {
       return res.status(403).json({
-        error: `Pendaftaran ditolak. Skor HP Reputasi Anda (${currentReputation}/100) masih dalam masa hukuman/pemulihan (minimal 50). HP Anda bertambah +1 secara berkala seiring waktu berjalan. Silakan tunggu beberapa saat lagi.`,
+        error: `Registration rejected. Your reputation HP (${currentReputation}/100) is in penalty/recovery (min 50). HP regenerates +1 over time — try again shortly.`,
       });
     }
 
     // ── Password Validation Guard ──
     if (event.access_type === "password") {
       if (!password || typeof password !== "string") {
-        return res.status(400).json({ error: "Password diperlukan untuk turnamen ini" });
+        return res.status(400).json({ error: "Password is required for this tournament" });
       }
       const passwordValid = await bcrypt.compare(password, event.password_hash);
       if (!passwordValid) {
-        return res.status(403).json({ error: "Password turnamen tidak valid" });
+        return res.status(403).json({ error: "Invalid tournament password" });
       }
     }
 
@@ -291,7 +291,7 @@ router.post("/:id/register", async (req, res) => {
         .single();
 
       if (!whitelistEntry) {
-        return res.status(403).json({ error: "Anda tidak diundang ke turnamen ini" });
+        return res.status(403).json({ error: "You are not invited to this tournament" });
       }
     }
 
@@ -359,7 +359,7 @@ router.post("/:id/register", async (req, res) => {
 
         if (receipt.status !== "success") {
           return res.status(400).json({
-            error: "Transaksi blockchain gagal (reverted). Pendaftaran ditolak.",
+            error: "Blockchain transaction reverted. Registration rejected.",
             tx_status: receipt.status,
           });
         }
@@ -367,7 +367,7 @@ router.post("/:id/register", async (req, res) => {
         // Verify transaction was sent to the vault contract
         if (receipt.to && receipt.to.toLowerCase() !== VAULT_ADDRESS.toLowerCase()) {
           return res.status(400).json({
-            error: "Transaksi tidak ditujukan ke kontrak vault yang benar.",
+            error: "Transaction is not targeting the correct vault contract.",
             expected: VAULT_ADDRESS,
             actual: receipt.to,
           });
@@ -376,7 +376,7 @@ router.post("/:id/register", async (req, res) => {
         // Verify sender
         if (receipt.from && receipt.from.toLowerCase() !== wallet_address.toLowerCase()) {
           return res.status(400).json({
-            error: "Transaksi tidak dikirim oleh dompet pendaftar.",
+            error: "Transaction was not sent from the registering wallet.",
             expected: wallet_address,
             actual: receipt.from,
           });
@@ -386,7 +386,7 @@ router.post("/:id/register", async (req, res) => {
       } catch (receiptErr) {
         console.error("RPC Receipt validation failed:", receiptErr);
         return res.status(400).json({
-          error: "Tidak dapat memvalidasi transaksi on-chain. Pastikan hash transaksi valid.",
+          error: "Unable to validate the on-chain transaction. Make sure the transaction hash is valid.",
         });
       }
     }
@@ -427,7 +427,7 @@ router.post("/:id/register", async (req, res) => {
 
     if (!isRegisteredInContract) {
       return res.status(400).json({
-        error: "Verifikasi kontrak gagal. Dompet Anda belum tercatat sebagai peserta aktif untuk event ini di blockchain.",
+        error: "Contract verification failed. Your wallet is not yet registered as a participant for this event on-chain.",
       });
     }
 
@@ -560,7 +560,7 @@ router.post("/:id/lock-roster", async (req, res) => {
 
     const count = participants?.length ?? 0;
     if (count < 2) {
-      return res.status(400).json({ error: "Minimal 2 peserta terdaftar untuk mengunci roster" });
+      return res.status(400).json({ error: "At least 2 participants required to lock the roster" });
     }
 
     // Update event roster_locked to true (keeps status: setup)
@@ -612,7 +612,7 @@ router.post("/:id/select-game-mode", async (req, res) => {
 
     const count = participants?.length ?? 0;
     if (count < 2) {
-      return res.status(400).json({ error: "Minimal 2 peserta terdaftar untuk memilih mode pertandingan" });
+      return res.status(400).json({ error: "At least 2 participants required to choose a game mode" });
     }
 
     // Update event table with the real game_mode and team_size
@@ -853,7 +853,7 @@ router.post("/:id/start", async (req, res) => {
       return res.status(400).json({ error: "Event is already active or ended" });
     }
     if (!event.roster_locked) {
-      return res.status(400).json({ error: "Pendaftaran harus ditutup (Roster Locked) sebelum memulai turnamen" });
+      return res.status(400).json({ error: "Roster must be locked before starting the tournament" });
     }
 
     const { data: participants } = await supabase
@@ -866,7 +866,7 @@ router.post("/:id/start", async (req, res) => {
     // Minimal validation: at least 2 participants
     if (count < 2) {
       return res.status(400).json({
-        error: `Minimal 2 peserta terdaftar untuk memulai turnamen. Saat ini: ${count}`,
+        error: `At least 2 participants required to start the tournament. Current count: ${count}`,
       });
     }
 
@@ -1457,13 +1457,13 @@ function resolveMyVote(votes, walletAddress) {
 function getStartBracketGuardError(event, brackets) {
   if (event.game_mode === "ffa") return null;
   if (!brackets || brackets.length === 0) {
-    return "Draf bagan pertandingan belum di-generate";
+    return "Bracket draft has not been generated";
   }
 
   if (event.game_mode === "1v1") {
     for (const match of brackets) {
       if (!match.player_a || !match.player_b) {
-        return `Pertandingan ${match.match_index + 1} masih memiliki slot kosong. Lengkapi draf bagan terlebih dahulu.`;
+        return `Match ${match.match_index + 1} has an empty slot. Complete the bracket draft first.`;
       }
     }
   }

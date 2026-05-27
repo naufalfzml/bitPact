@@ -136,7 +136,7 @@ test("start bracket guard allows ffa without brackets but blocks 1v1", () => {
   assert.equal(getStartBracketGuardError({ game_mode: "ffa" }, []), null);
   assert.match(
     getStartBracketGuardError({ game_mode: "1v1" }, []),
-    /Draf bagan pertandingan belum di-generate/
+    /Bracket draft has not been generated/
   );
 });
 
