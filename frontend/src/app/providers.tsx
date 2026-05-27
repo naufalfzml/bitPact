@@ -7,9 +7,21 @@ import { celo, celoAlfajores, celoSepolia } from "wagmi/chains";
 import { RainbowKitProvider, getDefaultConfig } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
 
+const WALLETCONNECT_DEV_FALLBACK = "a6873523dfdbd96e5eb9816035105e1d";
+const walletConnectProjectId =
+  process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || WALLETCONNECT_DEV_FALLBACK;
+
+if (typeof window !== "undefined" && !process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    "[bitPact] Using dev WalletConnect projectId fallback. " +
+      "Set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID in .env for production builds."
+  );
+}
+
 const config = getDefaultConfig({
   appName: "bitPact",
-  projectId: "a6873523dfdbd96e5eb9816035105e1d", // A generic valid/placeholder Project ID for development
+  projectId: walletConnectProjectId,
   chains: [celoSepolia, celoAlfajores, celo],
   ssr: true,
 });
