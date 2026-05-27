@@ -5,7 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title BitPactVault
 /// @notice Blind escrow vault for bitPact tournament prize pools on Celo.
-///         Holds cUSD deposits, distributes shares to winners, or refunds all participants.
+///         Holds USDC deposits, distributes shares to winners, or refunds all participants.
 /// @dev    Only the backend admin wallet may call mutating functions (createEvent, distributePrize, emergencyRefund).
 contract BitPactVault {
     // ──────────────────────────────────────────────
@@ -25,7 +25,7 @@ contract BitPactVault {
     mapping(bytes32 => bool) public eventExists;
 
     address public immutable admin;
-    IERC20 public immutable cUSD;
+    IERC20 public immutable usdc;
 
     // ──────────────────────────────────────────────
     //  Events
@@ -64,13 +64,13 @@ contract BitPactVault {
     //  Constructor
     // ──────────────────────────────────────────────
 
-    /// @param _admin  Backend admin wallet address authorised to execute critical functions
-    /// @param _cUSD   ERC-20 cUSD token address on Celo
-    constructor(address _admin, address _cUSD) {
+    /// @param _admin Backend admin wallet address authorised to execute critical functions
+    /// @param _usdc  ERC-20 USDC token address on Celo
+    constructor(address _admin, address _usdc) {
         require(_admin != address(0), "admin zero");
-        require(_cUSD != address(0), "cUSD zero");
+        require(_usdc != address(0), "usdc zero");
         admin = _admin;
-        cUSD = IERC20(_cUSD);
+        usdc = IERC20(_usdc);
     }
 
     // ──────────────────────────────────────────────
@@ -79,7 +79,7 @@ contract BitPactVault {
 
     /// @notice Create a new tournament event on-chain (admin-only).
     /// @param eventId     Unique event identifier (keccak256 of off-chain UUID)
-    /// @param ticketPrice Entry fee in cUSD (wei denomination)
+    /// @param ticketPrice Entry fee in USDC (6-decimal denomination)
     /// @param creator     Wallet address of the tournament creator / jury
     function createEvent(bytes32 eventId, uint256 ticketPrice, address creator) external onlyAdmin {
         if (eventExists[eventId]) revert EventAlreadyExists();
@@ -93,11 +93,11 @@ contract BitPactVault {
     }
 
     // ──────────────────────────────────────────────
-    //  Register (Participant deposits cUSD)
+    //  Register (Participant deposits USDC)
     // ──────────────────────────────────────────────
 
-    /// @notice Register for a tournament by depositing the exact ticket price in cUSD.
-    ///         Caller must have approved this contract for at least `ticketPrice` cUSD beforehand.
+    /// @notice Register for a tournament by depositing the exact ticket price in USDC.
+    ///         Caller must have approved this contract for at least `ticketPrice` USDC beforehand.
     /// @param eventId The event to register for
     function register(bytes32 eventId) external {
         if (!eventExists[eventId]) revert EventNotFound();
@@ -107,7 +107,7 @@ contract BitPactVault {
         if (e.isRegistered[msg.sender]) revert AlreadyRegistered();
         if (e.ticketPrice == 0) revert InvalidTicketPrice();
 
-        bool success = cUSD.transferFrom(msg.sender, address(this), e.ticketPrice);
+        bool success = usdc.transferFrom(msg.sender, address(this), e.ticketPrice);
         if (!success) revert TransferFailed();
 
         e.isRegistered[msg.sender] = true;
@@ -125,7 +125,7 @@ contract BitPactVault {
     ///         Sum of `shares` must equal the total `prizePool`.
     /// @param eventId  The event whose prize pool to distribute
     /// @param winners  Ordered list of winner addresses
-    /// @param shares   Corresponding cUSD amounts each winner receives
+    /// @param shares   Corresponding USDC amounts each winner receives
     function distributePrize(
         bytes32 eventId,
         address[] calldata winners,
@@ -147,7 +147,7 @@ contract BitPactVault {
         e.distributed = true;
 
         for (uint256 i; i < winners.length; ++i) {
-            bool success = cUSD.transfer(winners[i], shares[i]);
+            bool success = usdc.transfer(winners[i], shares[i]);
             if (!success) revert TransferFailed();
         }
 
@@ -173,7 +173,7 @@ contract BitPactVault {
         uint256 totalRefunded;
 
         for (uint256 i; i < e.participants.length; ++i) {
-            bool success = cUSD.transfer(e.participants[i], refundPerPerson);
+            bool success = usdc.transfer(e.participants[i], refundPerPerson);
             if (!success) revert TransferFailed();
             totalRefunded += refundPerPerson;
         }

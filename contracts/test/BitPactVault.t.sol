@@ -5,9 +5,10 @@ import {Test, console} from "forge-std/Test.sol";
 import {BitPactVault} from "../src/BitPactVault.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-/// @dev Minimal mock cUSD token for testing
-contract MockCUSD is ERC20 {
-    constructor() ERC20("Mock cUSD", "cUSD") {}
+/// @dev Minimal mock USDC token for testing (uses default 18 decimals; behavior
+///      is decimal-agnostic so this is fine for unit tests)
+contract MockUSDC is ERC20 {
+    constructor() ERC20("Mock USDC", "USDC") {}
 
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
@@ -16,7 +17,7 @@ contract MockCUSD is ERC20 {
 
 contract BitPactVaultTest is Test {
     BitPactVault public vault;
-    MockCUSD public token;
+    MockUSDC public token;
 
     address admin = address(0xAD);
     address creator = address(0xC1);
@@ -26,19 +27,19 @@ contract BitPactVaultTest is Test {
     address dave = address(0xD4);
 
     bytes32 eventId = keccak256("event-001");
-    uint256 ticketPrice = 5 ether; // 5 cUSD (18 decimals)
+    uint256 ticketPrice = 5 ether; // 5 tokens (mock uses 18 decimals)
 
     function setUp() public {
-        token = new MockCUSD();
+        token = new MockUSDC();
         vault = new BitPactVault(admin, address(token));
 
-        // Mint cUSD to participants
+        // Mint USDC to participants
         token.mint(alice, 100 ether);
         token.mint(bob, 100 ether);
         token.mint(charlie, 100 ether);
         token.mint(dave, 100 ether);
 
-        // Approve vault to spend cUSD
+        // Approve vault to spend USDC
         vm.prank(alice);
         token.approve(address(vault), type(uint256).max);
         vm.prank(bob);
@@ -55,7 +56,7 @@ contract BitPactVaultTest is Test {
 
     function test_constructor_setsAdminAndToken() public view {
         assertEq(vault.admin(), admin);
-        assertEq(address(vault.cUSD()), address(token));
+        assertEq(address(vault.usdc()), address(token));
     }
 
     // ──────────────────────────────────────────────
