@@ -786,6 +786,58 @@ router.post("/:id/draft-bracket", async (req, res) => {
 });
 
 // ──────────────────────────────────────────────
+//  POST /api/events/:id/assign-teams — Manual team assignment (team mode)
+// ──────────────────────────────────────────────
+router.post("/:id/assign-teams", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { creator_address, assignments } = req.body;
+
+    if (!Array.isArray(assignments)) {
+      return res.status(400).json({ error: "Missing or invalid assignments array" });
+    }
+
+    const { data: event } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (!event) return res.status(404).json({ error: "Event not found" });
+    if (event.status !== "setup" || !event.roster_locked) {
+      return res.status(400).json({ error: "Event must be in setup phase and roster must be locked" });
+    }
+    if (event.game_mode !== "team") {
+      return res.status(400).json({ error: "Team assignment is only valid for team mode" });
+    }
+    if (!creator_address || event.creator_address.toLowerCase() !== creator_address.toLowerCase()) {
+      return res.status(403).json({ error: "Only the creator can assign teams" });
+    }
+
+    // Only 2 teams supported: team_id must be 0 or 1.
+    for (const a of assignments) {
+      if (!a || typeof a.wallet_address !== "string" || ![0, 1].includes(a.team_id)) {
+        return res.status(400).json({ error: "Each assignment needs wallet_address and team_id (0 or 1)" });
+      }
+    }
+
+    for (const a of assignments) {
+      const { error: updErr } = await supabase
+        .from("participants")
+        .update({ team_id: a.team_id })
+        .eq("event_id", id)
+        .eq("wallet_address", a.wallet_address);
+      if (updErr) throw updErr;
+    }
+
+    res.json({ message: "Teams assigned successfully", count: assignments.length });
+  } catch (err) {
+    console.error("POST /api/events/:id/assign-teams error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────
 //  POST /api/events/:id/distribute — Manual quorum-based prize distribution
 // ──────────────────────────────────────────────
 router.post("/:id/distribute", async (req, res) => {
@@ -892,16 +944,22 @@ router.post("/:id/start", async (req, res) => {
 
     // Team mode setup
     if (event.game_mode === "team") {
-      // Shuffled and split into 2 teams
-      const shuffled = participants.sort(() => Math.random() - 0.5);
-      const teamASize = Math.ceil(count / 2);
+      // Respect a manual team assignment (via /assign-teams) when EVERY
+      // participant already has a team_id; otherwise fall back to a random
+      // balanced split.
+      const allAssigned = participants.every((p) => p.team_id === 0 || p.team_id === 1);
 
-      for (let i = 0; i < shuffled.length; i++) {
-        const teamId = i < teamASize ? 0 : 1;
-        await supabase
-          .from("participants")
-          .update({ team_id: teamId })
-          .eq("id", shuffled[i].id);
+      if (!allAssigned) {
+        const shuffled = [...participants].sort(() => Math.random() - 0.5);
+        const teamASize = Math.ceil(count / 2);
+
+        for (let i = 0; i < shuffled.length; i++) {
+          const teamId = i < teamASize ? 0 : 1;
+          await supabase
+            .from("participants")
+            .update({ team_id: teamId })
+            .eq("id", shuffled[i].id);
+        }
       }
 
       // Ensure Team match exists (it was created in select-game-mode, but double check)

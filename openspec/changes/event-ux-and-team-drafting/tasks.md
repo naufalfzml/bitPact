@@ -38,12 +38,12 @@
 
 ## 5. Penetapan tim manual/otomatis — backend (commit: `feat(backend): manual or random team assignment`)
 
-- [ ] 5.1 `routes/events.js`: tambah endpoint `POST /api/events/:id/assign-teams`
+- [x] 5.1 `routes/events.js`: tambah endpoint `POST /api/events/:id/assign-teams`
       (creator-only; status `setup` + `roster_locked` + `game_mode === "team"`)
       yang meng-update `team_id` peserta dari payload.
-- [ ] 5.2 Ubah `POST /api/events/:id/start` (mode tim): hormati `team_id` yang
+- [x] 5.2 Ubah `POST /api/events/:id/start` (mode tim): hormati `team_id` yang
       sudah diset (manual); hanya acak otomatis bila ada peserta `team_id` null.
-- [ ] 5.3 `cd backend && npm test` — hijau (tambah/ubah test bila ada yang
+- [x] 5.3 `cd backend && npm test` — hijau (tambah/ubah test bila ada yang
       menyentuh logika start tim).
 
 ## 6. Drafting tim manual/otomatis + label tim konsisten — frontend (commit: `feat(frontend): team drafting UI + consistent team labels`)
