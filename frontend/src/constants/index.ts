@@ -135,6 +135,23 @@ export const VAULT_ABI = [
     stateMutability: "nonpayable"
   },
   {
+    type: "function",
+    name: "claim",
+    inputs: [{ name: "eventId", type: "bytes32", internalType: "bytes32" }],
+    outputs: [],
+    stateMutability: "nonpayable"
+  },
+  {
+    type: "function",
+    name: "claimableOf",
+    inputs: [
+      { name: "eventId", type: "bytes32", internalType: "bytes32" },
+      { name: "account", type: "address", internalType: "address" }
+    ],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view"
+  },
+  {
     type: "event",
     name: "EventCreated",
     inputs: [
@@ -178,6 +195,16 @@ export const VAULT_ABI = [
     inputs: [
       { name: "eventId", type: "bytes32", indexed: true, internalType: "bytes32" },
       { name: "totalPrize", type: "uint256", indexed: false, internalType: "uint256" }
+    ],
+    anonymous: false
+  },
+  {
+    type: "event",
+    name: "PrizeClaimed",
+    inputs: [
+      { name: "eventId", type: "bytes32", indexed: true, internalType: "bytes32" },
+      { name: "winner", type: "address", indexed: true, internalType: "address" },
+      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" }
     ],
     anonymous: false
   }
