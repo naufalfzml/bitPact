@@ -24,14 +24,15 @@ forge test -vv
 ```
 
 Test suites:
-- `test/BitPactVault.t.sol` — 21 unit tests covering individual function guards.
+- `test/BitPactVault.t.sol` — 23 unit tests covering individual function guards,
+  including pull-payment `claim` (success, double-claim, non-winner).
 - `test/BitPactVaultFlow.t.sol` — 6 end-to-end + characterization tests
-  (lifecycle, phantom-participant DB bug, blacklist whole-batch revert).
+  (lifecycle, phantom-participant DB bug, per-winner blacklist isolation on claim).
 - `test/BitPactVaultFee.t.sol` — 7 protocol-fee tests (`feeBps = 200`): register
   pulls ticket+fee, pool excludes fee, distribute pays admin, refund returns fee,
   constructor fee cap.
 
-Total: **34 tests** (as of protocol-fee change).
+Total: **36 tests** (as of winner-claim-payout change).
 
 ### Deploy
 
@@ -71,9 +72,10 @@ receive 100% of the deposited tickets.
   escrowed separately in `feePool`. The frontend mirrors this integer math and
   approves `ticket + fee` (`PROTOCOL_FEE_BPS` in `frontend/src/constants/index.ts`
   must match the deployed `feeBps`).
-- **`distributePrize`** still requires `sum(shares) == prizePool` and pays the
-  full pool to winners, then forwards the escrowed `feePool` to `admin` (the
-  treasury) and emits `FeeCollected(eventId, amount)`.
+- **`distributePrize`** still requires `sum(shares) == prizePool`, but uses
+  **pull-payment**: it records `claimable[winner] += share` (winners claim the
+  full pool themselves) and forwards the escrowed `feePool` to `admin` (the
+  treasury), emitting `FeeCollected(eventId, amount)`.
 - **`emergencyRefund`** returns `ticketPrice + fee` to every participant (the
   fee is refunded since no payout occurred) and zeroes both `prizePool` and
   `feePool`.
@@ -85,27 +87,48 @@ receive 100% of the deposited tickets.
 The treasury is the `admin` wallet (no separate treasury address by design), so
 fee revenue is co-mingled with the gas float and tracked off-chain.
 
+## Prize Payout (Pull-Payment Claim)
+
+Prizes are paid via **pull-payment**, not push:
+
+- **`distributePrize(eventId, winners, shares)`** (admin) finalises a result by
+  crediting `claimable[winner] += share`. It does not transfer to winners. The
+  protocol fee is sent to `admin` at this step.
+- **`claim(eventId)`** — each winner calls this themselves (paying their own gas)
+  to pull `claimableOf(eventId, msg.sender)`. It zeroes the balance before
+  transferring (checks-effects-interactions) and emits
+  `PrizeClaimed(eventId, winner, amount)`. Reverts with `NothingToClaim` if the
+  caller has no balance (including double-claims).
+- **`claimableOf(eventId, account)`** — view used by the frontend to show the
+  claim button and amount.
+
+This isolates transfer failures: a blacklisted winner only fails their own
+`claim()` (see USDC Blacklist below), never the batch.
+
 ## Known Risks
 
-### USDC Blacklist (Whole-Batch Revert)
-
-`distributePrize` and `emergencyRefund` perform `usdc.transfer()` in a loop
-and revert the entire transaction on any single failure
-([BitPactVault.sol:149-152](src/BitPactVault.sol#L149-L152) &
-[L175-L179](src/BitPactVault.sol#L175-L179)).
+### USDC Blacklist
 
 Native USDC on Celo is operated by Circle and **can blacklist addresses**
-(typically due to OFAC compliance). If a winner or participant becomes
-blacklisted between deposit and settlement, the relevant call
-(`distributePrize` or `emergencyRefund`) will revert at `cUSD.transfer()` →
-funds remain locked in the vault.
+(typically due to OFAC compliance). A blacklisted recipient cannot receive
+`usdc.transfer()`. bitPact handles this differently for prizes vs refunds:
 
-The two characterization tests below document this behavior:
-- `test_flow_blacklistedRecipient_revertsBatchDistribute`
-- `test_flow_blacklistedRecipient_revertsBatchRefund`
-*(both in `test/BitPactVaultFlow.t.sol`, using `MockBlacklistedUSDC`)*
+**Prizes — pull-payment (isolated):** `distributePrize` does NOT transfer to
+winners; it records `claimable[winner] += share` and each winner calls `claim()`
+to pull their own prize. A blacklisted winner only fails their **own** `claim()`;
+it never blocks the other winners or the finalisation. Their prize stays escrowed
+and claimable once the blacklist is lifted.
 
-#### Mitigations available today
+**Refunds — still whole-batch:** `emergencyRefund` still pushes `usdc.transfer()`
+to every participant in a loop and reverts the entire call on any single failure.
+A blacklisted participant therefore freezes a refund until recovery.
+
+Characterization tests *(in `test/BitPactVaultFlow.t.sol`, using `MockBlacklistedUSDC`)*:
+- `test_flow_blacklistedWinner_isolatedToOwnClaim` — distribute succeeds, blacklisted
+  winner's `claim` reverts while others claim normally.
+- `test_flow_blacklistedRecipient_revertsBatchRefund` — refund still batch-reverts.
+
+#### Mitigations for the refund path
 
 - **`settlement_failed` + retry**: backend `settleEvent` catches the revert,
   records `settlement_error`, exposes `POST /api/events/:id/retry-settlement`
@@ -115,16 +138,6 @@ The two characterization tests below document this behavior:
 - **`appeal` flow**: when the consensus vote ties 50/50 (status `disputed`),
   the creator can submit a revised winners list excluding the blacklisted
   address, then put it back to voting via `POST /api/events/:id/appeal`.
-
-#### Planned (post-hackathon)
-
-Refactor the payout model from "push transfer in a loop" to **pull-payment**:
-`distributePrize` would only record `claimable[winner] += share`, then each
-winner calls `claim()` independently. A single bad address fails its own
-`claim()` and cannot DoS the rest of the pool.
-
-This requires a new contract deployment (V2) and is intentionally deferred
-to keep the hackathon scope tight.
 
 ### Re-entrancy
 

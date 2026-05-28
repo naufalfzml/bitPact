@@ -5,8 +5,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title BitPactVault
 /// @notice Blind escrow vault for bitPact tournament prize pools on Celo.
-///         Holds USDC deposits, distributes shares to winners, or refunds all participants.
-/// @dev    Only the backend admin wallet may call mutating functions (createEvent, distributePrize, emergencyRefund).
+///         Holds USDC deposits, records winner prizes as claimable, or refunds all participants.
+/// @dev    Admin-only mutating functions: createEvent, distributePrize, emergencyRefund.
+///         register() and claim() are permissionless (participants / winners act for themselves).
 contract BitPactVault {
     // ──────────────────────────────────────────────
     //  State

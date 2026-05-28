@@ -50,10 +50,10 @@
 
 ## 6. Verifikasi + docs (commit: `docs(contracts): pull-payment claim`)
 
-- [ ] 6.1 `contracts/README.md`: pindahkan pull-payment dari "Planned" ke
+- [x] 6.1 `contracts/README.md`: pindahkan pull-payment dari "Planned" ke
       implemented; perbarui catatan risiko blacklist (kini isolasi per claim).
-- [ ] 6.2 `cd backend && npm test` — 76 tetap hijau (logika settlement tak
+- [x] 6.2 `cd backend && npm test` — 76 tetap hijau (logika settlement tak
       berubah).
-- [ ] 6.3 `cd frontend && npm run build` — sukses.
+- [x] 6.3 `cd frontend && npm run build` — sukses.
 - [ ] 6.4 *(user)* Redeploy Sepolia (bytecode berubah), smoke test: distribute →
       pemenang claim → cek tx hash & saldo.
