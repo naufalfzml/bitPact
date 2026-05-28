@@ -29,10 +29,10 @@
 
 ## 4. Modal popup reusable + migrasi konfirmasi/error (commit: `feat(frontend): reusable confirm/error modal`)
 
-- [ ] 4.1 Tambah `components/Modal.tsx`: overlay + panel terpusat bergaya retro,
+- [x] 4.1 Tambah `components/Modal.tsx`: overlay + panel terpusat bergaya retro,
       props `title`, `message`/`children`, aksi (`onClose`, opsional `onConfirm` +
       label tombol).
-- [ ] 4.2 Migrasi error/konfirmasi penting ke Modal di `events/[id]/page.tsx`
+- [x] 4.2 Migrasi error/konfirmasi penting ke Modal di `events/[id]/page.tsx`
       dan `events/[id]/vote/page.tsx` (mis. error registrasi/distribusi,
       konfirmasi aksi penting). Sukses transien & tx hash tetap toast.
 

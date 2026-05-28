@@ -6,6 +6,7 @@ import { useAccount } from "wagmi";
 import { API_BASE_URL } from "@/constants";
 import { generateGamerTag } from "@/app/components/ConnectButtonClient";
 import { useToast } from "@/app/components/Toast";
+import { Modal, ModalTone } from "@/app/components/Modal";
 
 interface Participant {
   id: string;
@@ -43,6 +44,15 @@ export default function VotingConsolePage() {
   const [distributing, setDistributing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Centered modal for confirmations & errors (success/tx-hash stay as toasts).
+  const [modal, setModal] = useState<{
+    title: string;
+    message: string;
+    tone?: ModalTone;
+    onConfirm?: () => void;
+    confirmLabel?: string;
+  } | null>(null);
 
   const fetchEventDetail = async () => {
     try {
@@ -96,6 +106,41 @@ export default function VotingConsolePage() {
   const quorumMet = quorumPercent >= 51;
 
   const winners = event.participants.filter((p) => p.status === "winner");
+
+  const runDistribute = async () => {
+    setModal(null);
+    setDistributing(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/events/${event.id}/distribute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creator_address: address }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to distribute prize");
+      toast.success("Prize distributed successfully.");
+      fetchEventDetail();
+    } catch (err: any) {
+      setModal({
+        title: "■ DISTRIBUTION FAILED ■",
+        message: err.message || "Failed to distribute prize",
+        tone: "destructive",
+      });
+    } finally {
+      setDistributing(false);
+    }
+  };
+
+  const confirmDistribute = () => {
+    setModal({
+      title: "■ DISTRIBUTE PRIZE? ■",
+      message:
+        "This finalizes the result and releases the prize pool to the winners. This cannot be undone. Continue?",
+      tone: "warning",
+      onConfirm: runDistribute,
+      confirmLabel: "■ DISTRIBUTE ■",
+    });
+  };
 
   const handleVote = async (isValid: boolean) => {
     if (!isConnected || !address) {
@@ -246,24 +291,7 @@ export default function VotingConsolePage() {
               <button
                 className="bp-btn-distribute"
                 disabled={distributing}
-                onClick={async () => {
-                  setDistributing(true);
-                  try {
-                    const res = await fetch(`${API_BASE_URL}/events/${event.id}/distribute`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ creator_address: address }),
-                    });
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || "Failed to distribute prize");
-                    toast.success("Prize distributed successfully.");
-                    fetchEventDetail();
-                  } catch (err: any) {
-                    toast.error(`Distribution error: ${err.message}`);
-                  } finally {
-                    setDistributing(false);
-                  }
-                }}
+                onClick={confirmDistribute}
               >
                 {distributing ? "■ DISTRIBUTING... ■" : "■ DISTRIBUTE PRIZE ■"}
               </button>
@@ -302,6 +330,17 @@ export default function VotingConsolePage() {
           </button>
         </div>
       </div>
+
+      <Modal
+        open={!!modal}
+        title={modal?.title}
+        tone={modal?.tone}
+        message={modal?.message}
+        onClose={() => setModal(null)}
+        onConfirm={modal?.onConfirm}
+        confirmLabel={modal?.confirmLabel}
+        busy={distributing}
+      />
     </div>
   );
 }

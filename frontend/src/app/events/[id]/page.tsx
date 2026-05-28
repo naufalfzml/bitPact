@@ -7,6 +7,7 @@ import { parseUnits, formatUnits, keccak256, stringToBytes } from "viem";
 import { API_BASE_URL, VAULT_CONTRACT_ADDRESS, USDC_TOKEN_ADDRESS, VAULT_ABI, USDC_ABI, PROTOCOL_FEE_BPS, getTxExplorerUrl } from "@/constants";
 import { generateGamerTag } from "@/app/components/ConnectButtonClient";
 import { useToast } from "@/app/components/Toast";
+import { Modal, ModalTone } from "@/app/components/Modal";
 
 interface Participant {
   id: string;
@@ -65,6 +66,15 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+
+  // Centered modal for confirmations & errors (success/tx-hash stay as toasts).
+  const [modal, setModal] = useState<{
+    title: string;
+    message: string;
+    tone?: ModalTone;
+    onConfirm?: () => void;
+    confirmLabel?: string;
+  } | null>(null);
 
   // Settlement recovery state (status === "settlement_failed")
   const [isRetrying, setIsRetrying] = useState(false);
@@ -287,7 +297,11 @@ export default function EventDetailPage() {
       }, 2000);
     } catch (err: any) {
       console.error(err);
-      toast.error(`Registration failed: ${err.message || "Unknown error"}`);
+      setModal({
+        title: "■ REGISTRATION FAILED ■",
+        message: err.message || "Unknown error",
+        tone: "destructive",
+      });
       setStatusMessage("");
       setRegistering(false);
     }
@@ -1525,6 +1539,16 @@ export default function EventDetailPage() {
           </div>
         </div>
       </div>
+
+      <Modal
+        open={!!modal}
+        title={modal?.title}
+        tone={modal?.tone}
+        message={modal?.message}
+        onClose={() => setModal(null)}
+        onConfirm={modal?.onConfirm}
+        confirmLabel={modal?.confirmLabel}
+      />
     </div>
   );
 }
