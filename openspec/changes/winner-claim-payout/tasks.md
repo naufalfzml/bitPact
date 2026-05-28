@@ -30,18 +30,17 @@
 
 ## 3. Frontend ABI/constants (commit: `feat(frontend): claim ABI + helpers`)
 
-- [ ] 3.1 `constants/index.ts`: tambah ke `VAULT_ABI` fungsi `claim(bytes32)`,
+- [x] 3.1 `constants/index.ts`: tambah ke `VAULT_ABI` fungsi `claim(bytes32)`,
       view `claimableOf(bytes32,address)`, dan event `PrizeClaimed`.
 
 ## 4. Frontend Claim UI (commit: `feat(frontend): winner claim button + tx hash toast`)
 
-- [ ] 4.1 `events/[id]/page.tsx`: saat `status === "ended"`, baca
+- [x] 4.1 `events/[id]/page.tsx`: saat `status === "ended"`, baca
       `claimableOf(eventId, address)`.
-- [ ] 4.2 Bila claimable > 0: tampilkan tombol "■ Claim Prize ■" (+ jumlah);
+- [x] 4.2 Bila claimable > 0: tampilkan tombol "■ Claim Prize ■" (+ jumlah);
       klik → `writeContractAsync` `claim`, `waitForTransactionReceipt`,
-      `toast.success` berisi tautan tx hash (`getTxExplorerUrl`) di pojok.
-- [ ] 4.3 Setelah sukses, refresh; tampilkan status "Claimed" bila claimable 0
-      untuk pemenang.
+      `toast.success` berisi tx hash + tautan explorer (`getTxExplorerUrl`).
+- [x] 4.3 Setelah sukses, tampilkan status "Claimed" + tautan tx untuk pemenang.
 
 ## 5. Vote page copy (commit: `fix(frontend): clarify finalize-enables-claim copy`)
 

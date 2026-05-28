@@ -86,6 +86,11 @@ export default function EventDetailPage() {
     confirmLabel?: string;
   } | null>(null);
 
+  // Winner prize claim (pull-payment) state
+  const [claimable, setClaimable] = useState<bigint>(BigInt(0));
+  const [claiming, setClaiming] = useState(false);
+  const [claimTxHash, setClaimTxHash] = useState<string | null>(null);
+
   // Settlement recovery state (status === "settlement_failed")
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
@@ -170,6 +175,28 @@ export default function EventDetailPage() {
       fetchEventDetail();
     }
   }, [id]);
+
+  // Read the connected wallet's claimable prize once the event has ended.
+  useEffect(() => {
+    (async () => {
+      if (!event || event.status !== "ended" || !address || !publicClient) {
+        setClaimable(BigInt(0));
+        return;
+      }
+      try {
+        const eventIdBytes32 = keccak256(stringToBytes(event.id));
+        const amount = (await publicClient.readContract({
+          address: VAULT_CONTRACT_ADDRESS,
+          abi: VAULT_ABI,
+          functionName: "claimableOf",
+          args: [eventIdBytes32, address],
+        })) as bigint;
+        setClaimable(amount);
+      } catch (err) {
+        console.error("claimableOf read failed:", err);
+      }
+    })();
+  }, [event, address, publicClient]);
 
   const isCreator = !!(address && event && address.toLowerCase() === event.creator_address.toLowerCase());
   const isRegistered = !!(address && event && event.participants.some(p => p.wallet_address.toLowerCase() === address.toLowerCase()));
@@ -327,6 +354,40 @@ export default function EventDetailPage() {
       });
       setStatusMessage("");
       setRegistering(false);
+    }
+  };
+
+  // ── Prize Claim (winner pull-payment) ──
+  const handleClaim = async () => {
+    if (!isConnected || !address) {
+      toast.warning("Please connect your wallet first.");
+      return;
+    }
+    setClaiming(true);
+    try {
+      const eventIdBytes32 = keccak256(stringToBytes(event.id));
+      const txHash = await writeContractAsync({
+        address: VAULT_CONTRACT_ADDRESS,
+        abi: VAULT_ABI,
+        functionName: "claim",
+        args: [eventIdBytes32],
+      });
+      if (publicClient) {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== "success") throw new Error("Claim transaction reverted on-chain.");
+      }
+      setClaimable(BigInt(0));
+      setClaimTxHash(txHash);
+      toast.success(`Prize claimed! Tx: ${txHash.slice(0, 10)}…${txHash.slice(-8)}`, 8000);
+    } catch (err: any) {
+      console.error(err);
+      setModal({
+        title: "■ CLAIM FAILED ■",
+        message: err.message || "Claim failed",
+        tone: "destructive",
+      });
+    } finally {
+      setClaiming(false);
     }
   };
 
@@ -961,7 +1022,38 @@ export default function EventDetailPage() {
             {event.status === "ended" && (
               <div className="bp-text-center">
                 <p className="bp-text-muted bp-text-sm">■ TOURNAMENT COMPLETED ■</p>
-                <p className="bp-card-copy bp-mt-sm">Funds have been fully automated, settled and distributed.</p>
+                {claimable > BigInt(0) ? (
+                  <>
+                    <p className="bp-card-copy bp-mt-sm">
+                      ■ YOU WON ■ Claim your prize of {formatUnits(claimable, 6)} USDC.
+                    </p>
+                    <button
+                      className="bp-btn bp-btn-green bp-w-full bp-mt-md"
+                      disabled={claiming}
+                      onClick={handleClaim}
+                    >
+                      {claiming ? "■ CLAIMING... ■" : `■ Claim ${formatUnits(claimable, 6)} USDC ■`}
+                    </button>
+                  </>
+                ) : claimTxHash ? (
+                  <div className="bp-mt-sm">
+                    <p className="bp-text-green bp-text-sm">■ PRIZE CLAIMED ■</p>
+                    <a
+                      href={getTxExplorerUrl(claimTxHash)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="bp-text-xs bp-text-info"
+                      style={{ textDecoration: "underline" }}
+                    >
+                      View claim transaction on Blockscout
+                    </a>
+                  </div>
+                ) : (
+                  <p className="bp-card-copy bp-mt-sm">
+                    Results are finalized. Winners can claim their prize from this page;
+                    the protocol fee has been settled on-chain.
+                  </p>
+                )}
               </div>
             )}
 
