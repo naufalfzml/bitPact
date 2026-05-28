@@ -59,7 +59,8 @@
 
 ## 7. Verifikasi akhir (commit: digabung ke commit terkait / verifikasi saja)
 
-- [ ] 7.1 `cd frontend && npm run build` — sukses.
-- [ ] 7.2 `cd backend && npm test` — hijau.
-- [ ] 7.3 Uji manual: create event (tanpa Public), toast tidak dobel, modal
-      muncul untuk error, mode tim manual & acak, label "Team 1/2" konsisten.
+- [x] 7.1 `cd frontend && npm run build` — sukses.
+- [x] 7.2 `cd backend && npm test` — hijau (76 pass).
+- [ ] 7.3 *(user)* Uji manual di browser: create event (tanpa Public), toast tidak
+      dobel, modal muncul untuk error/konfirmasi, mode tim manual & acak, label
+      "Team 1/2" konsisten di roster & bracket.
