@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 
 export type ToastTone = "success" | "info" | "warning" | "destructive";
 
@@ -20,7 +20,10 @@ const DEFAULT_TTL_MS = 4000;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [nextId, setNextId] = useState(1);
+  // Monotonic id counter in a ref — NOT a state updater. React StrictMode (dev)
+  // double-invokes state updater functions, so generating the id inside a
+  // setState updater (and pushing the toast there) produced two toasts per call.
+  const nextIdRef = useRef(1);
 
   const dismiss = useCallback((id: number) => {
     setToasts((current) => current.filter((t) => t.id !== id));
@@ -28,15 +31,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const push = useCallback(
     (tone: ToastTone, message: string, ttl: number = DEFAULT_TTL_MS) => {
-      setNextId((id) => {
-        const newId = id;
-        const toast: Toast = { id: newId, tone, message };
-        setToasts((current) => [...current, toast]);
-        if (ttl > 0) {
-          window.setTimeout(() => dismiss(newId), ttl);
-        }
-        return id + 1;
-      });
+      const id = nextIdRef.current++;
+      setToasts((current) => [...current, { id, tone, message }]);
+      if (ttl > 0) {
+        window.setTimeout(() => dismiss(id), ttl);
+      }
     },
     [dismiss]
   );

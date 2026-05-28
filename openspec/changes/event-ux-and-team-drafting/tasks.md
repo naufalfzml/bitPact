@@ -21,10 +21,10 @@
 
 ## 3. Perbaikan toast dobel (commit: `fix(frontend): toast fires once (strictmode-safe)`)
 
-- [ ] 3.1 `components/Toast.tsx`: pindahkan id-counter ke `useRef` (atau
+- [x] 3.1 `components/Toast.tsx`: pindahkan id-counter ke `useRef` (atau
       `useReducer`); panggil `setToasts` di luar updater murni sehingga satu
       `push` = satu toast (dev & prod).
-- [ ] 3.2 Verifikasi manual di dev (StrictMode): satu aksi → satu toast; cek aksi
+- [x] 3.2 Verifikasi manual di dev (StrictMode): satu aksi → satu toast; cek aksi
       bracket tidak lagi dobel.
 
 ## 4. Modal popup reusable + migrasi konfirmasi/error (commit: `feat(frontend): reusable confirm/error modal`)
