@@ -89,7 +89,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="bp-flex bp-gap-md bp-items-center" style={{ justifyContent: "center", flexWrap: "wrap" }}>
-          <Link href="/events/create" className="bp-btn bp-btn-primary bp-btn-lg">
+          <Link href="/events/create" className="bp-btn bp-btn-primary bp-btn-create bp-btn-lg">
             ■ Create Event
           </Link>
           <a href="#explore" className="bp-btn bp-btn-accent bp-btn-lg">
@@ -170,7 +170,7 @@ export default function HomePage() {
         {!loading && !error && filteredEvents.length === 0 && (
           <div className="bp-card bp-text-center">
             <p className="bp-card-copy">NO TOURNAMENTS MATCHING THIS STAGE</p>
-            <Link href="/events/create" className="bp-btn bp-btn-primary bp-mt-md">
+            <Link href="/events/create" className="bp-btn bp-btn-primary bp-btn-create bp-mt-md">
               Start A New Event
             </Link>
           </div>

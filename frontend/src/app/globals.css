@@ -404,6 +404,15 @@ textarea {
   font-size: 0.72rem;
 }
 
+/* Create Event CTA: retro arcade hover — yellow shifts to electric cyan glow,
+   keeping black text readable. Placed after .bp-btn:hover so the border wins. */
+.bp-btn-create:hover {
+  background: linear-gradient(180deg, var(--bp-info), #2bb8d6);
+  color: var(--bp-black);
+  border-color: var(--bp-info);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.45), 0 0 14px rgba(76, 231, 255, 0.6);
+}
+
 .bp-card {
   background:
     linear-gradient(180deg, rgba(30, 36, 66, 0.96), rgba(18, 22, 40, 0.96));
