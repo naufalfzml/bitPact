@@ -52,6 +52,16 @@ interface EventDetail {
 
 type SelectableGameMode = "1v1" | "team" | "ffa";
 
+// Map backend team identifiers (team_id 0/1 or bracket token "team-0"/"team-1")
+// to 1-based display labels used consistently across roster + bracket.
+function teamLabel(idOrToken: number | string): string {
+  const n =
+    typeof idOrToken === "number"
+      ? idOrToken
+      : Number(String(idOrToken).replace("team-", ""));
+  return `Team ${n + 1}`;
+}
+
 export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -95,10 +105,23 @@ export default function EventDetailPage() {
   const [isStartingEvent, setIsStartingEvent] = useState(false);
   const [localDraftMatches, setLocalDraftMatches] = useState<BracketMatch[]>([]);
 
+  // Team-mode draft: wallet_address -> team_id (0 = Team 1, 1 = Team 2)
+  const [teamDraft, setTeamDraft] = useState<Record<string, number>>({});
+  const [isSavingTeams, setIsSavingTeams] = useState(false);
+
   // Sync draft matches from event detail
   useEffect(() => {
     if (event && event.status === "setup" && event.roster_locked && event.brackets) {
       setLocalDraftMatches(event.brackets);
+    }
+    // Seed team draft from saved team_id, else default to a balanced split.
+    if (event && event.status === "setup" && event.roster_locked && event.game_mode === "team") {
+      const half = Math.ceil(event.participants.length / 2);
+      const seed: Record<string, number> = {};
+      event.participants.forEach((p, i) => {
+        seed[p.wallet_address] = p.team_id === 0 || p.team_id === 1 ? p.team_id : i < half ? 0 : 1;
+      });
+      setTeamDraft(seed);
     }
   }, [event]);
 
@@ -483,6 +506,44 @@ export default function EventDetailPage() {
       toast.error(`Start error: ${err.message}`);
     } finally {
       setIsStartingEvent(false);
+    }
+  };
+
+  // ── Team Draft (manual or random team assignment) ──
+  const handleSetTeam = (wallet: string, teamId: number) => {
+    setTeamDraft((prev) => ({ ...prev, [wallet]: teamId }));
+  };
+
+  const handleRandomizeTeams = () => {
+    const shuffled = [...event.participants].sort(() => Math.random() - 0.5);
+    const half = Math.ceil(shuffled.length / 2);
+    const next: Record<string, number> = {};
+    shuffled.forEach((p, i) => {
+      next[p.wallet_address] = i < half ? 0 : 1;
+    });
+    setTeamDraft(next);
+  };
+
+  const handleSaveTeams = async () => {
+    setIsSavingTeams(true);
+    try {
+      const assignments = event.participants.map((p) => ({
+        wallet_address: p.wallet_address,
+        team_id: teamDraft[p.wallet_address] ?? 0,
+      }));
+      const res = await fetch(`${API_BASE_URL}/events/${event.id}/assign-teams`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creator_address: address, assignments }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save teams");
+      toast.success("Teams saved.");
+      fetchEventDetail();
+    } catch (err: any) {
+      setModal({ title: "■ SAVE TEAMS FAILED ■", message: err.message, tone: "destructive" });
+    } finally {
+      setIsSavingTeams(false);
     }
   };
 
@@ -1046,7 +1107,7 @@ export default function EventDetailPage() {
                   return (
                     <div key={teamId} className={`bp-team-group ${teamId === 0 ? "team-red" : "team-blue"}`}>
                       <div className="bp-team-group-title">
-                        {teamId === 0 ? "■ TEAM RED ■" : "■ TEAM BLUE ■"} ({teamPlayers.length})
+                        ■ {teamLabel(teamId).toUpperCase()} ■ ({teamPlayers.length})
                       </div>
                       {teamPlayers.map((p) => (
                         <div key={p.id} className="bp-flex bp-justify-between bp-items-center" style={{ padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
@@ -1243,11 +1304,56 @@ export default function EventDetailPage() {
                           ))}
                         </div>
                       ) : (
-                        <div className="bp-surface-strip bp-text-center bp-mb-md" style={{ borderColor: "rgba(76, 231, 255, 0.4)" }}>
-                          <p className="bp-text-xs bp-text-info bp-font-display">■ MODE TIM 2V2 / CUSTOM ■</p>
-                          <p className="bp-card-copy bp-mt-sm">
-                            Registered participants ({event.participants.length} players) will be randomly split into Red Team and Blue Team when the official match starts.
+                        <div className="bp-surface-strip bp-mb-md" style={{ borderColor: "rgba(76, 231, 255, 0.4)" }}>
+                          <div className="bp-flex bp-justify-between bp-items-center bp-mb-sm">
+                            <p className="bp-text-xs bp-text-info bp-font-display">■ TEAM DRAFT ■</p>
+                            <button
+                              type="button"
+                              className="bp-btn bp-btn-accent bp-text-xs"
+                              disabled={isSavingTeams || isStartingEvent}
+                              onClick={handleRandomizeTeams}
+                              style={{ whiteSpace: "nowrap" }}
+                            >
+                              ■ RANDOMIZE ■
+                            </button>
+                          </div>
+                          <p className="bp-card-copy bp-mb-sm">
+                            Assign each player to a team, or randomize. Save before starting — teams are kept as set.
                           </p>
+                          <div style={{ maxHeight: "220px", overflowY: "auto" }}>
+                            {event.participants.map((p) => (
+                              <div
+                                key={p.id}
+                                className="bp-flex bp-justify-between bp-items-center"
+                                style={{ gap: "8px", padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                              >
+                                <span className="bp-text-xs" style={{ color: "var(--bp-green)" }}>
+                                  {generateGamerTag(p.wallet_address)}
+                                  <span className="bp-text-muted" style={{ fontSize: "0.35rem", marginLeft: "6px" }}>
+                                    {p.wallet_address.slice(0, 6)}...{p.wallet_address.slice(-4)}
+                                  </span>
+                                </span>
+                                <select
+                                  className="bp-select bp-text-xs"
+                                  style={{ width: "110px", padding: "4px", background: "#15151f", appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }}
+                                  value={teamDraft[p.wallet_address] ?? 0}
+                                  onChange={(e) => handleSetTeam(p.wallet_address, Number(e.target.value))}
+                                >
+                                  <option value={0}>{teamLabel(0)}</option>
+                                  <option value={1}>{teamLabel(1)}</option>
+                                </select>
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            className="bp-btn bp-w-full bp-mt-sm"
+                            style={{ borderColor: "var(--bp-primary)", background: "transparent" }}
+                            disabled={isSavingTeams || isStartingEvent}
+                            onClick={handleSaveTeams}
+                          >
+                            {isSavingTeams ? "SAVING..." : "■ SAVE TEAMS ■"}
+                          </button>
                         </div>
                       )}
 
@@ -1506,7 +1612,7 @@ export default function EventDetailPage() {
                             >
                               {match.player_a ? (
                                 <span style={{ wordBreak: "break-all" }}>
-                                  {match.player_a.startsWith("team-") ? match.player_a.toUpperCase() : `${match.player_a.slice(0, 6)}...${match.player_a.slice(-4)}`}
+                                  {match.player_a.startsWith("team-") ? teamLabel(match.player_a) : `${match.player_a.slice(0, 6)}...${match.player_a.slice(-4)}`}
                                 </span>
                               ) : (
                                 <span className="bp-text-muted">EMPTY TBD</span>
@@ -1522,7 +1628,7 @@ export default function EventDetailPage() {
                             >
                               {match.player_b ? (
                                 <span style={{ wordBreak: "break-all" }}>
-                                  {match.player_b.startsWith("team-") ? match.player_b.toUpperCase() : `${match.player_b.slice(0, 6)}...${match.player_b.slice(-4)}`}
+                                  {match.player_b.startsWith("team-") ? teamLabel(match.player_b) : `${match.player_b.slice(0, 6)}...${match.player_b.slice(-4)}`}
                                 </span>
                               ) : (
                                 <span className="bp-text-muted">EMPTY TBD</span>

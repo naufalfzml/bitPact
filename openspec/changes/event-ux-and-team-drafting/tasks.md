@@ -48,12 +48,12 @@
 
 ## 6. Drafting tim manual/otomatis + label tim konsisten — frontend (commit: `feat(frontend): team drafting UI + consistent team labels`)
 
-- [ ] 6.1 Helper `teamLabel(idOrToken)` → `0`/`team-0` = "Team 1", `1`/`team-1` =
+- [x] 6.1 Helper `teamLabel(idOrToken)` → `0`/`team-0` = "Team 1", `1`/`team-1` =
       "Team 2"; pakai di roster + bracket board + panel draft.
-- [ ] 6.2 `events/[id]/page.tsx` roster: ganti "TEAM RED/BLUE" → `teamLabel`.
-- [ ] 6.3 Bracket board: render token `team-0/1` lewat `teamLabel` (ganti
+- [x] 6.2 `events/[id]/page.tsx` roster: ganti "TEAM RED/BLUE" → `teamLabel`.
+- [x] 6.3 Bracket board: render token `team-0/1` lewat `teamLabel` (ganti
       "TEAM-0/1").
-- [ ] 6.4 Panel draft tim (mode `team`, fase setup + roster_locked): dropdown
+- [x] 6.4 Panel draft tim (mode `team`, fase setup + roster_locked): dropdown
       pilih "Team 1"/"Team 2" per peserta (manual) + tombol acak otomatis;
       simpan via `assign-teams`.
 
