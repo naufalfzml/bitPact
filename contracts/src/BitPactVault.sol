@@ -16,6 +16,7 @@ contract BitPactVault {
         address creator;
         uint256 ticketPrice;
         uint256 prizePool;
+        uint256 feePool; // escrowed protocol fee, paid to admin on distribute, refunded otherwise
         bool distributed;
         address[] participants;
         mapping(address => bool) isRegistered;
@@ -27,6 +28,12 @@ contract BitPactVault {
     address public immutable admin;
     IERC20 public immutable usdc;
 
+    /// @notice Protocol fee in basis points (e.g. 200 = 2%), charged as an entry surcharge.
+    uint16 public immutable feeBps;
+
+    uint16 private constant MAX_FEE_BPS = 1000; // hard cap 10% safety
+    uint16 private constant BPS_DENOMINATOR = 10000;
+
     // ──────────────────────────────────────────────
     //  Events
     // ──────────────────────────────────────────────
@@ -35,6 +42,7 @@ contract BitPactVault {
     event ParticipantRegistered(bytes32 indexed eventId, address indexed participant, uint256 amount);
     event PrizeDistributed(bytes32 indexed eventId, uint256 totalPrize);
     event FundsRefunded(bytes32 indexed eventId, uint256 totalRefunded);
+    event FeeCollected(bytes32 indexed eventId, uint256 amount);
 
     // ──────────────────────────────────────────────
     //  Errors
@@ -64,13 +72,18 @@ contract BitPactVault {
     //  Constructor
     // ──────────────────────────────────────────────
 
-    /// @param _admin Backend admin wallet address authorised to execute critical functions
-    /// @param _usdc  ERC-20 USDC token address on Celo
-    constructor(address _admin, address _usdc) {
+    /// @param _admin  Backend admin wallet address authorised to execute critical functions.
+    ///                Also the treasury that receives the protocol fee on distribution.
+    /// @param _usdc   ERC-20 USDC token address on Celo
+    /// @param _feeBps Protocol fee in basis points charged as an entry surcharge on register
+    ///                (200 = 2%). Immutable; must be <= MAX_FEE_BPS (1000 = 10%).
+    constructor(address _admin, address _usdc, uint16 _feeBps) {
         require(_admin != address(0), "admin zero");
         require(_usdc != address(0), "usdc zero");
+        require(_feeBps <= MAX_FEE_BPS, "fee too high");
         admin = _admin;
         usdc = IERC20(_usdc);
+        feeBps = _feeBps;
     }
 
     // ──────────────────────────────────────────────
@@ -96,8 +109,10 @@ contract BitPactVault {
     //  Register (Participant deposits USDC)
     // ──────────────────────────────────────────────
 
-    /// @notice Register for a tournament by depositing the exact ticket price in USDC.
-    ///         Caller must have approved this contract for at least `ticketPrice` USDC beforehand.
+    /// @notice Register for a tournament by depositing the ticket price plus protocol fee in USDC.
+    ///         The fee (`ticketPrice * feeBps / 10000`) is escrowed separately and does NOT inflate
+    ///         the prize pool — winners still receive 100% of the ticket deposits.
+    ///         Caller must have approved this contract for at least `ticketPrice + fee` USDC beforehand.
     /// @param eventId The event to register for
     function register(bytes32 eventId) external {
         if (!eventExists[eventId]) revert EventNotFound();
@@ -107,12 +122,16 @@ contract BitPactVault {
         if (e.isRegistered[msg.sender]) revert AlreadyRegistered();
         if (e.ticketPrice == 0) revert InvalidTicketPrice();
 
-        bool success = usdc.transferFrom(msg.sender, address(this), e.ticketPrice);
+        uint256 fee = (e.ticketPrice * feeBps) / BPS_DENOMINATOR;
+        uint256 total = e.ticketPrice + fee;
+
+        bool success = usdc.transferFrom(msg.sender, address(this), total);
         if (!success) revert TransferFailed();
 
         e.isRegistered[msg.sender] = true;
         e.participants.push(msg.sender);
-        e.prizePool += e.ticketPrice;
+        e.prizePool += e.ticketPrice; // pool tracks ticket deposits only
+        e.feePool += fee; // fee accumulated separately, escrowed
 
         emit ParticipantRegistered(eventId, msg.sender, e.ticketPrice);
     }
@@ -122,7 +141,9 @@ contract BitPactVault {
     // ──────────────────────────────────────────────
 
     /// @notice Distribute the prize pool to winners (admin-only).
-    ///         Sum of `shares` must equal the total `prizePool`.
+    ///         Sum of `shares` must equal the total `prizePool` (ticket deposits only — the
+    ///         protocol fee is not part of the pool). Winners therefore receive 100% of the pot.
+    ///         After paying winners, the escrowed protocol fee is forwarded to the admin treasury.
     /// @param eventId  The event whose prize pool to distribute
     /// @param winners  Ordered list of winner addresses
     /// @param shares   Corresponding USDC amounts each winner receives
@@ -152,13 +173,22 @@ contract BitPactVault {
         }
 
         emit PrizeDistributed(eventId, e.prizePool);
+
+        uint256 fee = e.feePool;
+        if (fee > 0) {
+            e.feePool = 0;
+            bool feeOk = usdc.transfer(admin, fee);
+            if (!feeOk) revert TransferFailed();
+            emit FeeCollected(eventId, fee);
+        }
     }
 
     // ──────────────────────────────────────────────
     //  Emergency Refund
     // ──────────────────────────────────────────────
 
-    /// @notice Refund every participant their ticket price (admin-only).
+    /// @notice Refund every participant their ticket price plus protocol fee (admin-only).
+    ///         The fee is returned in full since no distribution succeeded.
     ///         Can only be called before prize distribution.
     /// @param eventId The event to refund
     function emergencyRefund(bytes32 eventId) external onlyAdmin {
@@ -169,7 +199,8 @@ contract BitPactVault {
 
         e.distributed = true; // prevent re-entrancy & double refund
 
-        uint256 refundPerPerson = e.ticketPrice;
+        uint256 feePerPerson = (e.ticketPrice * feeBps) / BPS_DENOMINATOR;
+        uint256 refundPerPerson = e.ticketPrice + feePerPerson;
         uint256 totalRefunded;
 
         for (uint256 i; i < e.participants.length; ++i) {
@@ -179,6 +210,7 @@ contract BitPactVault {
         }
 
         e.prizePool = 0;
+        e.feePool = 0;
 
         emit FundsRefunded(eventId, totalRefunded);
     }

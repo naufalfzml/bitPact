@@ -19,6 +19,12 @@ export const USDC_TOKEN_ADDRESS = (
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
+// Protocol fee in basis points (200 = 2%), charged as an entry surcharge on
+// register. MUST match the `feeBps` the deployed vault was constructed with
+// (env PROTOCOL_FEE_BPS at deploy time). Used to mirror the contract's integer
+// fee math on the frontend before approving USDC.
+export const PROTOCOL_FEE_BPS = 200;
+
 /**
  * Build a Blockscout explorer URL for a transaction hash on the configured
  * Celo network. Falls back to Sepolia (the default for `CELO_NETWORK` in
@@ -36,7 +42,8 @@ export const VAULT_ABI = [
     type: "constructor",
     inputs: [
       { name: "_admin", type: "address", internalType: "address" },
-      { name: "_usdc", type: "address", internalType: "address" }
+      { name: "_usdc", type: "address", internalType: "address" },
+      { name: "_feeBps", type: "uint16", internalType: "uint16" }
     ],
     stateMutability: "nonpayable"
   },
@@ -45,6 +52,13 @@ export const VAULT_ABI = [
     name: "admin",
     inputs: [],
     outputs: [{ name: "", type: "address", internalType: "address" }],
+    stateMutability: "view"
+  },
+  {
+    type: "function",
+    name: "feeBps",
+    inputs: [],
+    outputs: [{ name: "", type: "uint16", internalType: "uint16" }],
     stateMutability: "view"
   },
   {
@@ -127,6 +141,15 @@ export const VAULT_ABI = [
       { name: "eventId", type: "bytes32", indexed: true, internalType: "bytes32" },
       { name: "creator", type: "address", indexed: true, internalType: "address" },
       { name: "ticketPrice", type: "uint256", indexed: false, internalType: "uint256" }
+    ],
+    anonymous: false
+  },
+  {
+    type: "event",
+    name: "FeeCollected",
+    inputs: [
+      { name: "eventId", type: "bytes32", indexed: true, internalType: "bytes32" },
+      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" }
     ],
     anonymous: false
   },

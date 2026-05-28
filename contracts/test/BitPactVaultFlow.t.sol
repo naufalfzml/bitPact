@@ -48,7 +48,7 @@ contract BitPactVaultFlowTest is Test {
 
     function setUp() public {
         usdc = new MockUSDC();
-        vault = new BitPactVault(admin, address(usdc));
+        vault = new BitPactVault(admin, address(usdc), 0);
 
         address[4] memory players = [alice, bob, carol, dave];
         for (uint256 i; i < players.length; ++i) {
@@ -197,7 +197,7 @@ contract BitPactVaultFlowTest is Test {
 
     function test_flow_blacklistedRecipient_revertsBatchDistribute() public {
         MockBlacklistedUSDC blUsdc = new MockBlacklistedUSDC();
-        BitPactVault freshVault = new BitPactVault(admin, address(blUsdc));
+        BitPactVault freshVault = new BitPactVault(admin, address(blUsdc), 0);
 
         // Mint + approve 3 players
         address[3] memory players = [alice, bob, carol];
@@ -253,7 +253,7 @@ contract BitPactVaultFlowTest is Test {
 
     function test_flow_blacklistedRecipient_revertsBatchRefund() public {
         MockBlacklistedUSDC blUsdc = new MockBlacklistedUSDC();
-        BitPactVault freshVault = new BitPactVault(admin, address(blUsdc));
+        BitPactVault freshVault = new BitPactVault(admin, address(blUsdc), 0);
 
         address[3] memory players = [alice, bob, carol];
         for (uint256 i; i < players.length; ++i) {

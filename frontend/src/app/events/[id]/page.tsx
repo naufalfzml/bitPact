@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
-import { parseUnits, keccak256, stringToBytes } from "viem";
-import { API_BASE_URL, VAULT_CONTRACT_ADDRESS, USDC_TOKEN_ADDRESS, VAULT_ABI, USDC_ABI, getTxExplorerUrl } from "@/constants";
+import { parseUnits, formatUnits, keccak256, stringToBytes } from "viem";
+import { API_BASE_URL, VAULT_CONTRACT_ADDRESS, USDC_TOKEN_ADDRESS, VAULT_ABI, USDC_ABI, PROTOCOL_FEE_BPS, getTxExplorerUrl } from "@/constants";
 import { generateGamerTag } from "@/app/components/ConnectButtonClient";
 import { useToast } from "@/app/components/Toast";
 
@@ -208,15 +208,19 @@ export default function EventDetailPage() {
       }
 
       const ticketPriceUnits = parseUnits(String(event.ticket_price), 6);
+      // Mirror the contract's integer fee math (floor): fee = ticket * feeBps / 10000.
+      // Approve ticket + fee so register() can pull the full entry surcharge.
+      const feeUnits = (ticketPriceUnits * BigInt(PROTOCOL_FEE_BPS)) / BigInt(10000);
+      const totalUnits = ticketPriceUnits + feeUnits;
       const eventIdBytes32 = keccak256(stringToBytes(event.id));
 
       setStatusMessage("STEP 1: APPROVING USDC TRANSACTIONS...");
-      // 1. Approve USDC Transfer
+      // 1. Approve USDC Transfer (ticket + protocol fee)
       const approveTx = await writeContractAsync({
         address: USDC_TOKEN_ADDRESS,
         abi: USDC_ABI,
         functionName: "approve",
-        args: [VAULT_CONTRACT_ADDRESS, ticketPriceUnits],
+        args: [VAULT_CONTRACT_ADDRESS, totalUnits],
       });
       console.log("Approve Tx Hash:", approveTx);
 
@@ -620,6 +624,34 @@ export default function EventDetailPage() {
 
   const participantLimitLabel = event.max_participants ? `${event.participants.length}/${event.max_participants}` : `${event.participants.length}/∞`;
   const prizePool = (Number(event.ticket_price) * event.participants.length).toFixed(2);
+
+  // Entry-fee breakdown shown before registering. Mirror the contract's integer
+  // fee math (floor) so the displayed total matches what register() will pull.
+  const ticketPriceUnits = parseUnits(String(event.ticket_price), 6);
+  const feeUnits = (ticketPriceUnits * BigInt(PROTOCOL_FEE_BPS)) / BigInt(10000);
+  const feeDisplay = formatUnits(feeUnits, 6);
+  const totalDisplay = formatUnits(ticketPriceUnits + feeUnits, 6);
+  const feePercentLabel = (PROTOCOL_FEE_BPS / 100).toString();
+
+  const feeBreakdown = (
+    <div className="bp-surface-strip bp-mb-md" style={{ borderColor: "rgba(76, 231, 255, 0.32)" }}>
+      <div className="bp-flex bp-justify-between bp-text-xs">
+        <span className="bp-text-muted">Ticket</span>
+        <span>{event.ticket_price} USDC</span>
+      </div>
+      <div className="bp-flex bp-justify-between bp-text-xs bp-mt-xs">
+        <span className="bp-text-muted">Service fee ({feePercentLabel}%)</span>
+        <span>{feeDisplay} USDC</span>
+      </div>
+      <div
+        className="bp-flex bp-justify-between bp-text-xs bp-mt-xs"
+        style={{ borderTop: "1px solid rgba(114, 128, 168, 0.28)", paddingTop: "4px" }}
+      >
+        <span className="bp-text-primary">Total to lock</span>
+        <strong className="bp-text-green">{totalDisplay} USDC</strong>
+      </div>
+    </div>
+  );
   const votingPercent = Number(event.voting.percentage || 0);
   const bracketRounds = Array.from(new Set(event.brackets.map((match) => match.round)));
 
@@ -788,6 +820,7 @@ export default function EventDetailPage() {
                         style={{ letterSpacing: "3px", textAlign: "center", textTransform: "uppercase" }}
                       />
                     </div>
+                    {feeBreakdown}
                     <button
                       className="bp-btn bp-btn-primary bp-w-full"
                       onClick={() => handleRegister(roomPassword)}
@@ -814,8 +847,9 @@ export default function EventDetailPage() {
                       </div>
                     )}
                     <p className="bp-card-copy bp-mb-md">
-                      Join this tournament by locking your {event.ticket_price} USDC entrance fee in our secure escrow.
+                      Join this tournament by locking your entrance fee in our secure escrow.
                     </p>
+                    {feeBreakdown}
                     <button
                       className="bp-btn bp-btn-primary bp-w-full"
                       onClick={() => handleRegister()}

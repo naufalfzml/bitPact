@@ -31,7 +31,7 @@ contract BitPactVaultTest is Test {
 
     function setUp() public {
         token = new MockUSDC();
-        vault = new BitPactVault(admin, address(token));
+        vault = new BitPactVault(admin, address(token), 0);
 
         // Mint USDC to participants
         token.mint(alice, 100 ether);

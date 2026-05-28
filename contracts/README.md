@@ -27,8 +27,11 @@ Test suites:
 - `test/BitPactVault.t.sol` — 21 unit tests covering individual function guards.
 - `test/BitPactVaultFlow.t.sol` — 6 end-to-end + characterization tests
   (lifecycle, phantom-participant DB bug, blacklist whole-batch revert).
+- `test/BitPactVaultFee.t.sol` — 7 protocol-fee tests (`feeBps = 200`): register
+  pulls ticket+fee, pool excludes fee, distribute pays admin, refund returns fee,
+  constructor fee cap.
 
-Total: **27 tests** (as of contract-naming-and-blacklist-docs change).
+Total: **34 tests** (as of protocol-fee change).
 
 ### Deploy
 
@@ -41,8 +44,9 @@ USDC native token addresses (per `openspec/specs/usdc-integration`):
 | Celo Sepolia | `0x01C5C0122039549AD1493B8220cABEdD739BC44E` |
 
 ```shell
-export ADMIN_WALLET_ADDRESS=0x...        # backend admin / onlyAdmin caller
+export ADMIN_WALLET_ADDRESS=0x...        # backend admin / onlyAdmin caller + fee treasury
 export USDC_TOKEN_ADDRESS=0x...           # USDC token address per network
+export PROTOCOL_FEE_BPS=200               # protocol fee in bps (200 = 2%); optional, defaults to 200
 export CELO_RPC_URL=https://forno.celo-sepolia.celo-testnet.org   # or forno.celo.org
 export DEPLOYER_PRIVATE_KEY=0x...
 
@@ -52,6 +56,34 @@ forge script script/Deploy.s.sol:DeployBitPactVault \
   --private-key $DEPLOYER_PRIVATE_KEY \
   -vvvv
 ```
+
+## Protocol Fee
+
+The vault charges a **protocol fee** as an **entry surcharge** — it sits on top
+of the ticket price and does **not** reduce the prize pool, so winners still
+receive 100% of the deposited tickets.
+
+- **`feeBps`** is set immutably in the constructor (`200` = 2%) and capped at
+  `MAX_FEE_BPS = 1000` (10%); the constructor reverts with `"fee too high"`
+  above the cap. Changing the fee requires a redeploy.
+- **`register`** pulls `ticketPrice + fee` where `fee = ticketPrice * feeBps / 10000`
+  (integer floor). `prizePool` accumulates ticket deposits only; the fee is
+  escrowed separately in `feePool`. The frontend mirrors this integer math and
+  approves `ticket + fee` (`PROTOCOL_FEE_BPS` in `frontend/src/constants/index.ts`
+  must match the deployed `feeBps`).
+- **`distributePrize`** still requires `sum(shares) == prizePool` and pays the
+  full pool to winners, then forwards the escrowed `feePool` to `admin` (the
+  treasury) and emits `FeeCollected(eventId, amount)`.
+- **`emergencyRefund`** returns `ticketPrice + fee` to every participant (the
+  fee is refunded since no payout occurred) and zeroes both `prizePool` and
+  `feePool`.
+
+> Rounding note: for very small ticket prices the floored fee can be `0`
+> (e.g. a 0.01 USDC ticket at 2% → fee 0). This is acceptable; tiny pools yield
+> negligible revenue.
+
+The treasury is the `admin` wallet (no separate treasury address by design), so
+fee revenue is co-mingled with the gas float and tracked off-chain.
 
 ## Known Risks
 

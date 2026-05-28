@@ -11,6 +11,7 @@ import {BitPactVault} from "../src/BitPactVault.sol";
 /// @dev    Usage:
 ///         export ADMIN_WALLET_ADDRESS=0x...
 ///         export USDC_TOKEN_ADDRESS=0x...
+///         export PROTOCOL_FEE_BPS=200   # optional, defaults to 200 (2%)
 ///         forge script script/Deploy.s.sol:DeployBitPactVault \
 ///           --rpc-url $CELO_RPC_URL \
 ///           --broadcast \
@@ -22,13 +23,16 @@ contract DeployBitPactVault is Script {
         address adminWallet = vm.envAddress("ADMIN_WALLET_ADDRESS");
         // Read USDC token address from environment
         address usdcToken = vm.envAddress("USDC_TOKEN_ADDRESS");
+        // Read protocol fee (basis points) from environment, default 200 (2%)
+        uint16 feeBps = uint16(vm.envOr("PROTOCOL_FEE_BPS", uint256(200)));
 
         vm.startBroadcast();
 
-        BitPactVault vault = new BitPactVault(adminWallet, usdcToken);
+        BitPactVault vault = new BitPactVault(adminWallet, usdcToken, feeBps);
         console.log("BitPactVault deployed at:", address(vault));
         console.log("Admin wallet:", adminWallet);
         console.log("USDC token:", usdcToken);
+        console.log("Protocol fee (bps):", feeBps);
 
         vm.stopBroadcast();
     }
