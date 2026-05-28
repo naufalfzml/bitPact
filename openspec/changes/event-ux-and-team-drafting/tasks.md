@@ -2,12 +2,12 @@
 
 ## 1. Create Event — privat saja (commit: `feat(frontend): private-only access on create event`)
 
-- [ ] 1.1 `events/create/page.tsx`: hapus `<option value="public">`; sisakan
+- [x] 1.1 `events/create/page.tsx`: hapus `<option value="public">`; sisakan
       `password` + `invite_only`.
-- [ ] 1.2 Ubah default state `accessType` dari `"public"` → `"password"`;
+- [x] 1.2 Ubah default state `accessType` dari `"public"` → `"password"`;
       sempitkan tipe union ke `"password" | "invite_only"` (state + handler
       `onChange`).
-- [ ] 1.3 Pastikan tidak ada cabang UI Create yang mengirim `access_type:
+- [x] 1.3 Pastikan tidak ada cabang UI Create yang mengirim `access_type:
       "public"`. (Detail event untuk event publik lama TIDAK diubah.)
 
 ## 2. Copy tombol & loading (commit: `fix(frontend): accurate create button + loading copy`)

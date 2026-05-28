@@ -14,8 +14,8 @@ export default function CreateEventPage() {
   const [ticketPrice, setTicketPrice] = useState("");
   const [consensusThreshold, setConsensusThreshold] = useState(51);
 
-  // Private Events state
-  const [accessType, setAccessType] = useState<"public" | "password" | "invite_only">("public");
+  // Private Events state — bitPact events are private-only (no public option)
+  const [accessType, setAccessType] = useState<"password" | "invite_only">("password");
   const [eventPassword, setEventPassword] = useState("");
   const [whitelistInput, setWhitelistInput] = useState("");
   const [whitelistAddresses, setWhitelistAddresses] = useState<string[]>([]);
@@ -164,10 +164,9 @@ export default function CreateEventPage() {
             <select
               className="bp-select"
               value={accessType}
-              onChange={(e) => setAccessType(e.target.value as "public" | "password" | "invite_only")}
+              onChange={(e) => setAccessType(e.target.value as "password" | "invite_only")}
               disabled={loading}
             >
-              <option value="public">■ PUBLIC — Anyone Can Join</option>
               <option value="password">■ PRIVATE: PASSWORD — Room Code Required</option>
               <option value="invite_only">■ PRIVATE: INVITE ONLY — Whitelist Only</option>
             </select>
