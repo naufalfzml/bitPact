@@ -20,6 +20,7 @@ contract BitPactVault {
         bool distributed;
         address[] participants;
         mapping(address => bool) isRegistered;
+        mapping(address => uint256) claimable; // pull-payment: prize each winner can claim
     }
 
     mapping(bytes32 => EventInfo) private events;
@@ -43,6 +44,7 @@ contract BitPactVault {
     event PrizeDistributed(bytes32 indexed eventId, uint256 totalPrize);
     event FundsRefunded(bytes32 indexed eventId, uint256 totalRefunded);
     event FeeCollected(bytes32 indexed eventId, uint256 amount);
+    event PrizeClaimed(bytes32 indexed eventId, address indexed winner, uint256 amount);
 
     // ──────────────────────────────────────────────
     //  Errors
@@ -58,6 +60,7 @@ contract BitPactVault {
     error SharesMismatch();
     error EmptyWinners();
     error LengthMismatch();
+    error NothingToClaim();
 
     // ──────────────────────────────────────────────
     //  Modifier
@@ -140,13 +143,17 @@ contract BitPactVault {
     //  Distribute Prize
     // ──────────────────────────────────────────────
 
-    /// @notice Distribute the prize pool to winners (admin-only).
+    /// @notice Finalise a tournament by recording each winner's claimable prize (admin-only).
     ///         Sum of `shares` must equal the total `prizePool` (ticket deposits only — the
-    ///         protocol fee is not part of the pool). Winners therefore receive 100% of the pot.
-    ///         After paying winners, the escrowed protocol fee is forwarded to the admin treasury.
-    /// @param eventId  The event whose prize pool to distribute
+    ///         protocol fee is not part of the pool), so winners can claim 100% of the pot.
+    ///         This uses pull-payment: instead of pushing USDC to winners, it credits
+    ///         `claimable[winner] += share`; each winner later calls `claim()`. The escrowed
+    ///         protocol fee is forwarded to the admin treasury here.
+    /// @dev    Pull-payment isolates transfer failures: a single blacklisted winner only fails
+    ///         their own `claim()`, never blocking the others or this finalisation.
+    /// @param eventId  The event whose prize pool to finalise
     /// @param winners  Ordered list of winner addresses
-    /// @param shares   Corresponding USDC amounts each winner receives
+    /// @param shares   Corresponding USDC amounts each winner can claim
     function distributePrize(
         bytes32 eventId,
         address[] calldata winners,
@@ -168,8 +175,7 @@ contract BitPactVault {
         e.distributed = true;
 
         for (uint256 i; i < winners.length; ++i) {
-            bool success = usdc.transfer(winners[i], shares[i]);
-            if (!success) revert TransferFailed();
+            e.claimable[winners[i]] += shares[i];
         }
 
         emit PrizeDistributed(eventId, e.prizePool);
@@ -181,6 +187,28 @@ contract BitPactVault {
             if (!feeOk) revert TransferFailed();
             emit FeeCollected(eventId, fee);
         }
+    }
+
+    // ──────────────────────────────────────────────
+    //  Claim Prize (pull-payment)
+    // ──────────────────────────────────────────────
+
+    /// @notice Claim the prize credited to the caller for a finalised event.
+    ///         The caller pays their own gas. Reverts if nothing is claimable.
+    /// @param eventId The event to claim from
+    function claim(bytes32 eventId) external {
+        if (!eventExists[eventId]) revert EventNotFound();
+
+        EventInfo storage e = events[eventId];
+        uint256 amount = e.claimable[msg.sender];
+        if (amount == 0) revert NothingToClaim();
+
+        e.claimable[msg.sender] = 0; // effects before interaction (CEI)
+
+        bool success = usdc.transfer(msg.sender, amount);
+        if (!success) revert TransferFailed();
+
+        emit PrizeClaimed(eventId, msg.sender, amount);
     }
 
     // ──────────────────────────────────────────────
@@ -246,5 +274,10 @@ contract BitPactVault {
     /// @notice Check whether an address is registered for an event.
     function isParticipant(bytes32 eventId, address user) external view returns (bool) {
         return events[eventId].isRegistered[user];
+    }
+
+    /// @notice Prize amount `account` can currently claim for an event (0 if none/already claimed).
+    function claimableOf(bytes32 eventId, address account) external view returns (uint256) {
+        return events[eventId].claimable[account];
     }
 }

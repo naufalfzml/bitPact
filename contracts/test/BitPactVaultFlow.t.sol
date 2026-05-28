@@ -87,6 +87,10 @@ contract BitPactVaultFlowTest is Test {
         vm.prank(admin);
         vault.distributePrize(eventId, winners, shares);
 
+        // Pull-payment: prize recorded as claimable, then claimed by the winner.
+        assertEq(vault.claimableOf(eventId, alice), ticketPrice * 3, "full pool claimable");
+        vm.prank(alice);
+        vault.claim(eventId);
         assertEq(usdc.balanceOf(alice), aliceBefore + ticketPrice * 3, "winner gets full pool");
         (, , , bool distAfter, ) = vault.getEventInfo(eventId);
         assertTrue(distAfter);
@@ -185,17 +189,16 @@ contract BitPactVaultFlowTest is Test {
     }
 
     // ──────────────────────────────────────────────
-    //  Characterization: USDC blacklist causes whole-batch revert
+    //  Characterization: USDC blacklist behaviour
     //
-    //  Documents the "Known Risk" we publish in contracts/README.md:
-    //  Circle USDC can blacklist any address. Because distributePrize and
-    //  emergencyRefund transfer in a loop and revert on first failure,
-    //  a single blacklisted winner / participant freezes the whole pool
-    //  until creator routes recovery through `disputed` + `appeal`, or
-    //  backend triggers `settlement_failed` retry with different inputs.
+    //  Circle USDC can blacklist any address. distributePrize is now pull-payment:
+    //  it records claimable balances and never transfers to winners, so a single
+    //  blacklisted winner is isolated to their OWN claim() and cannot block the
+    //  others or the finalisation. emergencyRefund still pushes in a loop, so it
+    //  retains the whole-batch revert risk (documented in contracts/README.md).
     // ──────────────────────────────────────────────
 
-    function test_flow_blacklistedRecipient_revertsBatchDistribute() public {
+    function test_flow_blacklistedWinner_isolatedToOwnClaim() public {
         MockBlacklistedUSDC blUsdc = new MockBlacklistedUSDC();
         BitPactVault freshVault = new BitPactVault(admin, address(blUsdc), 0);
 
@@ -220,7 +223,6 @@ contract BitPactVaultFlowTest is Test {
         freshVault.register(freshEvent);
 
         uint256 aliceBefore = blUsdc.balanceOf(alice);
-        uint256 bobBefore = blUsdc.balanceOf(bob);
         uint256 carolBefore = blUsdc.balanceOf(carol);
 
         // Circle blacklists `bob` AFTER deposit
@@ -235,20 +237,29 @@ contract BitPactVaultFlowTest is Test {
         shares[1] = ticketPrice;
         shares[2] = ticketPrice;
 
+        // Pull-payment: distribute records claimable and does NOT revert despite bob.
         vm.prank(admin);
+        freshVault.distributePrize(freshEvent, winners, shares);
+        (, , , bool distributed, ) = freshVault.getEventInfo(freshEvent);
+        assertTrue(distributed, "event finalised even with a blacklisted winner");
+
+        // Non-blacklisted winners claim successfully.
+        vm.prank(alice);
+        freshVault.claim(freshEvent);
+        vm.prank(carol);
+        freshVault.claim(freshEvent);
+        assertEq(blUsdc.balanceOf(alice), aliceBefore + ticketPrice, "alice claimed");
+        assertEq(blUsdc.balanceOf(carol), carolBefore + ticketPrice, "carol claimed");
+
+        // Only the blacklisted winner's OWN claim reverts; others were unaffected.
+        vm.prank(bob);
         vm.expectRevert(
             abi.encodeWithSelector(MockBlacklistedUSDC.BlacklistedRecipient.selector, bob)
         );
-        freshVault.distributePrize(freshEvent, winners, shares);
+        freshVault.claim(freshEvent);
 
-        // Whole batch reverted: nobody got paid, event not distributed,
-        // pool still trapped in vault.
-        assertEq(blUsdc.balanceOf(alice), aliceBefore, "alice unchanged");
-        assertEq(blUsdc.balanceOf(bob), bobBefore, "bob unchanged");
-        assertEq(blUsdc.balanceOf(carol), carolBefore, "carol unchanged");
-        (, , uint256 pool, bool distributed, ) = freshVault.getEventInfo(freshEvent);
-        assertEq(pool, ticketPrice * 3, "pool still locked");
-        assertFalse(distributed, "event not marked distributed");
+        // bob's prize stays escrowed and claimable once he is unblocked.
+        assertEq(freshVault.claimableOf(freshEvent, bob), ticketPrice, "bob still claimable");
     }
 
     function test_flow_blacklistedRecipient_revertsBatchRefund() public {

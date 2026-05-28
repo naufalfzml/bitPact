@@ -174,10 +174,18 @@ contract BitPactVaultTest is Test {
         vm.prank(admin);
         vault.distributePrize(eventId, winners, shares);
 
-        assertEq(token.balanceOf(alice), aliceBefore + totalPool);
+        // Pull-payment: distribute records claimable, does NOT push to winner.
+        assertEq(token.balanceOf(alice), aliceBefore, "no push at distribute");
+        assertEq(vault.claimableOf(eventId, alice), totalPool);
 
         (, , , bool dist, ) = vault.getEventInfo(eventId);
         assertTrue(dist);
+
+        // Winner claims their prize.
+        vm.prank(alice);
+        vault.claim(eventId);
+        assertEq(token.balanceOf(alice), aliceBefore + totalPool, "claimed full pool");
+        assertEq(vault.claimableOf(eventId, alice), 0);
     }
 
     function test_distributePrize_multiWinner() public {
@@ -197,8 +205,60 @@ contract BitPactVaultTest is Test {
         vm.prank(admin);
         vault.distributePrize(eventId, winners, shares);
 
+        // Recorded as claimable, balances unchanged until claim.
+        assertEq(vault.claimableOf(eventId, alice), shares[0]);
+        assertEq(vault.claimableOf(eventId, bob), shares[1]);
+        assertEq(token.balanceOf(alice), aliceBefore);
+        assertEq(token.balanceOf(bob), bobBefore);
+
+        vm.prank(alice);
+        vault.claim(eventId);
+        vm.prank(bob);
+        vault.claim(eventId);
+
         assertEq(token.balanceOf(alice), aliceBefore + shares[0]);
         assertEq(token.balanceOf(bob), bobBefore + shares[1]);
+    }
+
+    // ──────────────────────────────────────────────
+    //  claim Tests
+    // ──────────────────────────────────────────────
+
+    function test_claim_revertNothingToClaim_nonWinner() public {
+        _createAndRegisterFourParticipants();
+
+        address[] memory winners = new address[](1);
+        winners[0] = alice;
+        uint256[] memory shares = new uint256[](1);
+        shares[0] = ticketPrice * 4;
+
+        vm.prank(admin);
+        vault.distributePrize(eventId, winners, shares);
+
+        // bob is not a winner -> nothing to claim
+        vm.prank(bob);
+        vm.expectRevert(BitPactVault.NothingToClaim.selector);
+        vault.claim(eventId);
+    }
+
+    function test_claim_revertDoubleClaim() public {
+        _createAndRegisterFourParticipants();
+
+        address[] memory winners = new address[](1);
+        winners[0] = alice;
+        uint256[] memory shares = new uint256[](1);
+        shares[0] = ticketPrice * 4;
+
+        vm.prank(admin);
+        vault.distributePrize(eventId, winners, shares);
+
+        vm.prank(alice);
+        vault.claim(eventId);
+
+        // Second claim reverts (claimable already zeroed).
+        vm.prank(alice);
+        vm.expectRevert(BitPactVault.NothingToClaim.selector);
+        vault.claim(eventId);
     }
 
     function test_distributePrize_revertNonAdmin() public {

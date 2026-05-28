@@ -128,12 +128,18 @@ contract BitPactVaultFeeTest is Test {
         vm.prank(admin);
         vault.distributePrize(eventId, winners, shares);
 
-        // Winner receives 100% of the pool
-        assertEq(usdc.balanceOf(alice), aliceBefore + pool, "winner gets full pool");
-        // Admin (treasury) receives the accumulated fee
+        // Admin (treasury) receives the accumulated fee at distribute time
         assertEq(usdc.balanceOf(admin), adminBefore + totalFee, "admin gets fee");
-        // Vault fully drained
-        assertEq(usdc.balanceOf(address(vault)), 0, "vault drained");
+        // Pull-payment: winner not pushed; full pool recorded as claimable & still escrowed
+        assertEq(usdc.balanceOf(alice), aliceBefore, "winner not pushed at distribute");
+        assertEq(vault.claimableOf(eventId, alice), pool);
+        assertEq(usdc.balanceOf(address(vault)), pool, "pool still escrowed pre-claim");
+
+        // Winner claims the full pool
+        vm.prank(alice);
+        vault.claim(eventId);
+        assertEq(usdc.balanceOf(alice), aliceBefore + pool, "winner gets full pool");
+        assertEq(usdc.balanceOf(address(vault)), 0, "vault drained after claim");
     }
 
     function test_distribute_multiWinner_adminStillGetsFee() public {
@@ -154,6 +160,13 @@ contract BitPactVaultFeeTest is Test {
         vault.distributePrize(eventId, winners, shares);
 
         assertEq(usdc.balanceOf(admin), adminBefore + totalFee);
+        // Pool stays escrowed as claimable until winners claim.
+        assertEq(usdc.balanceOf(address(vault)), pool);
+
+        vm.prank(alice);
+        vault.claim(eventId);
+        vm.prank(bob);
+        vault.claim(eventId);
         assertEq(usdc.balanceOf(address(vault)), 0);
     }
 

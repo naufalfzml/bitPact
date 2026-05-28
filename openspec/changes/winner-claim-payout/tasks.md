@@ -4,29 +4,29 @@
 
 ## 1. Contract — pull-payment (commit: `feat(contracts): pull-payment claim for prizes`)
 
-- [ ] 1.1 `EventInfo`: tambah `mapping(address => uint256) claimable`.
-- [ ] 1.2 Tambah error `NothingToClaim` + event `PrizeClaimed(bytes32 indexed
+- [x] 1.1 `EventInfo`: tambah `mapping(address => uint256) claimable`.
+- [x] 1.2 Tambah error `NothingToClaim` + event `PrizeClaimed(bytes32 indexed
       eventId, address indexed winner, uint256 amount)`.
-- [ ] 1.3 `distributePrize()`: ganti loop transfer ke pemenang menjadi
+- [x] 1.3 `distributePrize()`: ganti loop transfer ke pemenang menjadi
       `e.claimable[winners[i]] += shares[i]`; tetap validasi `sum==prizePool`,
       set `distributed=true`, kirim `feePool` ke admin + `FeeCollected`,
       emit `PrizeDistributed` (kini bermakna finalized/claimable set).
-- [ ] 1.4 Tambah `claim(bytes32 eventId)`: ambil `claimable[msg.sender]`,
+- [x] 1.4 Tambah `claim(bytes32 eventId)`: ambil `claimable[msg.sender]`,
       revert `NothingToClaim` bila 0, set 0, transfer, emit `PrizeClaimed`.
-- [ ] 1.5 Tambah view `claimableOf(bytes32 eventId, address account)`.
-- [ ] 1.6 Update NatSpec (distributePrize sekarang record; claim; claimableOf).
+- [x] 1.5 Tambah view `claimableOf(bytes32 eventId, address account)`.
+- [x] 1.6 Update NatSpec (distributePrize sekarang record; claim; claimableOf).
 
 ## 2. Contract tests (commit: digabung dgn #1 atau `test(contracts): claim + isolation`)
 
-- [ ] 2.1 `BitPactVault.t.sol`: ubah test distribute → saldo pemenang tak berubah,
+- [x] 2.1 `BitPactVault.t.sol`: ubah test distribute → saldo pemenang tak berubah,
       `claimableOf == share`; tambah test `claim` sukses, double-claim revert,
       non-winner revert.
-- [ ] 2.2 `BitPactVaultFee.t.sol`: admin tetap dapat fee saat distribute;
+- [x] 2.2 `BitPactVaultFee.t.sol`: admin tetap dapat fee saat distribute;
       pemenang dapat pool penuh **setelah claim**.
-- [ ] 2.3 `BitPactVaultFlow.t.sol`: update test blacklist — distribute tidak
+- [x] 2.3 `BitPactVaultFlow.t.sol`: update test blacklist — distribute tidak
       revert lagi; `claim` pemenang lain tetap sukses, hanya pemenang
       ter-blacklist yang gagal.
-- [ ] 2.4 `cd contracts && forge test` — semua hijau.
+- [x] 2.4 `cd contracts && forge test` — semua hijau.
 
 ## 3. Frontend ABI/constants (commit: `feat(frontend): claim ABI + helpers`)
 
