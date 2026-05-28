@@ -404,13 +404,12 @@ textarea {
   font-size: 0.72rem;
 }
 
-/* Create Event CTA: retro arcade hover — yellow shifts to electric cyan glow,
-   keeping black text readable. Placed after .bp-btn:hover so the border wins. */
-.bp-btn-create:hover {
-  background: linear-gradient(180deg, var(--bp-info), #2bb8d6);
-  color: var(--bp-black);
-  border-color: var(--bp-info);
-  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.45), 0 0 14px rgba(76, 231, 255, 0.6);
+/* Primary CTA hover (Create Event, Enter Tournament Console): keep the yellow
+   fill, flip the label to a deep retro red. Red is the only vivid palette tone
+   with readable contrast (~4.7:1) on the bright yellow. Placed after
+   .bp-btn-primary so the text color wins. */
+.bp-btn-cta:hover {
+  color: var(--bp-destructive-dim);
 }
 
 .bp-card {

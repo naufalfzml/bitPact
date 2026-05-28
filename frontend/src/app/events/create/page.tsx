@@ -359,7 +359,7 @@ export default function CreateEventPage() {
           <div className="bp-flex bp-mt-xl">
             <button
               type="submit"
-              className="bp-btn bp-btn-primary bp-btn-create bp-w-full"
+              className="bp-btn bp-btn-primary bp-btn-cta bp-w-full"
               disabled={loading}
             >
               {loading ? "CREATING TOURNAMENT..." : "■ Create Tournament"}
