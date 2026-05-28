@@ -118,7 +118,7 @@ export default function VotingConsolePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to distribute prize");
-      toast.success("Prize distributed successfully.");
+      toast.success("Results finalized — winners can now claim their prize.");
       fetchEventDetail();
     } catch (err: any) {
       setModal({
@@ -133,12 +133,12 @@ export default function VotingConsolePage() {
 
   const confirmDistribute = () => {
     setModal({
-      title: "■ DISTRIBUTE PRIZE? ■",
+      title: "■ FINALIZE RESULTS? ■",
       message:
-        "This finalizes the result and releases the prize pool to the winners. This cannot be undone. Continue?",
+        "This finalizes the result and makes the prize pool claimable by the winners (they claim it themselves). This cannot be undone. Continue?",
       tone: "warning",
       onConfirm: runDistribute,
-      confirmLabel: "■ DISTRIBUTE ■",
+      confirmLabel: "■ FINALIZE ■",
     });
   };
 
@@ -194,7 +194,7 @@ export default function VotingConsolePage() {
       <div className="bp-card bp-panel-info bp-mb-lg">
         <h3 className="bp-card-title">Event: {event.title}</h3>
         <p className="bp-card-copy bp-mt-sm">
-          Please audit the proposed winners submitted below. If the majority agrees, the escrow funds will automatically unlock and payout. If rejected, funds are refunded to all players.
+          Please audit the proposed winners submitted below. If the majority agrees, the prize pool becomes claimable by the winners. If rejected, funds are refunded to all players.
         </p>
       </div>
 
@@ -259,7 +259,7 @@ export default function VotingConsolePage() {
               </p>
               <p className="bp-card-copy bp-mt-sm">
                 {event.my_vote === "agree"
-                  ? "If consensus passes the threshold, the prize will be distributed."
+                  ? "If consensus passes the threshold, the prize becomes claimable by the winners."
                   : "If consensus rejects, all participants will be refunded."}
               </p>
             </div>
@@ -286,14 +286,14 @@ export default function VotingConsolePage() {
           {isCreator && quorumMet && (
             <div className="bp-card bp-panel-success bp-mb-lg">
               <p className="bp-card-copy bp-mb-md">
-                Voting quorum reached ({quorumPercent.toFixed(1)}%). You can distribute the prize now.
+                Voting quorum reached ({quorumPercent.toFixed(1)}%). Finalize now so winners can claim their prize.
               </p>
               <button
                 className="bp-btn-distribute"
                 disabled={distributing}
                 onClick={confirmDistribute}
               >
-                {distributing ? "■ DISTRIBUTING... ■" : "■ DISTRIBUTE PRIZE ■"}
+                {distributing ? "■ FINALIZING... ■" : "■ FINALIZE & ENABLE CLAIMS ■"}
               </button>
             </div>
           )}

@@ -44,9 +44,9 @@
 
 ## 5. Vote page copy (commit: `fix(frontend): clarify finalize-enables-claim copy`)
 
-- [ ] 5.1 `events/[id]/vote/page.tsx`: perjelas copy tombol "DISTRIBUTE PRIZE"
+- [x] 5.1 `events/[id]/vote/page.tsx`: perjelas copy tombol "DISTRIBUTE PRIZE"
       menjadi finalisasi yang mengaktifkan claim (bukan transfer langsung), dan
-      teks penjelas terkait.
+      teks penjelas terkait (+ baris payout di `events/[id]/page.tsx`).
 
 ## 6. Verifikasi + docs (commit: `docs(contracts): pull-payment claim`)
 

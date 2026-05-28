@@ -1568,8 +1568,8 @@ export default function EventDetailPage() {
               {event.status === "voting" && (
                 <div>
                   <p className="bp-card-copy bp-mb-md">
-                    The tournament is currently in the voting phase. Payout happens
-                    automatically once voting ends.
+                    The tournament is currently in the voting phase. Once voting ends,
+                    results are finalized and winners can claim their prize.
                   </p>
 
                   {/* Quorum Progress bar */}
