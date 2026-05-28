@@ -221,6 +221,123 @@ const getBlockscoutApiUrl = () => {
   return "https://celo-sepolia.blockscout.com/api";
 };
 
+// ──────────────────────────────────────────────
+//  Registration eligibility (OFF-CHAIN guards only)
+//
+//  Runs every check that does NOT require an on-chain deposit so the frontend
+//  can call it BEFORE asking the user to deposit (via /verify-access). This
+//  prevents the "wrong password but already deposited" trap. Returns
+//  { ok: true, event } or { ok: false, code, error }. Deps injectable for tests.
+// ──────────────────────────────────────────────
+async function checkRegistrationEligibility(eventId, walletAddress, password, deps = {}) {
+  const db = deps.supabase || supabase;
+  const loadReputation = deps.getRegeneratedReputation || getRegeneratedReputation;
+
+  if (!walletAddress) {
+    return { ok: false, code: 400, error: "Missing wallet_address" };
+  }
+
+  const { data: event, error: eventErr } = await db
+    .from("events")
+    .select("*")
+    .eq("id", eventId)
+    .single();
+
+  if (eventErr || !event) return { ok: false, code: 404, error: "Event not found" };
+  if (event.status !== "setup") {
+    return { ok: false, code: 400, error: "Event registration is closed" };
+  }
+  if (event.roster_locked) {
+    return { ok: false, code: 400, error: "Registration is closed (roster locked)" };
+  }
+
+  // Capacity
+  const { data: participantsForLimit } = await db
+    .from("participants")
+    .select("id")
+    .eq("event_id", eventId);
+  const currentCount = participantsForLimit?.length ?? 0;
+  if (event.max_participants && currentCount >= event.max_participants) {
+    return {
+      ok: false,
+      code: 400,
+      error: `Registration rejected. Tournament is full (${event.max_participants} participants).`,
+    };
+  }
+
+  // Creator cannot join their own event
+  if (walletAddress.toLowerCase() === event.creator_address.toLowerCase()) {
+    return { ok: false, code: 403, error: "Creator cannot register to their own tournament" };
+  }
+
+  // Reputation gate (HP >= 50)
+  const repData = await loadReputation(walletAddress);
+  if (repData.current_hp < 50) {
+    return {
+      ok: false,
+      code: 403,
+      error: `Registration rejected. Your reputation HP (${repData.current_hp}/100) is in penalty/recovery (min 50). HP regenerates +1 over time — try again shortly.`,
+    };
+  }
+
+  // Password
+  if (event.access_type === "password") {
+    if (!password || typeof password !== "string") {
+      return { ok: false, code: 400, error: "Password is required for this tournament" };
+    }
+    const passwordValid = await bcrypt.compare(password, event.password_hash);
+    if (!passwordValid) {
+      return { ok: false, code: 403, error: "Invalid tournament password" };
+    }
+  }
+
+  // Invite-only whitelist
+  if (event.access_type === "invite_only") {
+    const { data: whitelistEntry } = await db
+      .from("event_whitelist")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("wallet_address", walletAddress.toLowerCase())
+      .single();
+    if (!whitelistEntry) {
+      return { ok: false, code: 403, error: "You are not invited to this tournament" };
+    }
+  }
+
+  // Duplicate registration
+  const { data: existing } = await db
+    .from("participants")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("wallet_address", walletAddress)
+    .single();
+  if (existing) return { ok: false, code: 409, error: "Already registered" };
+
+  return { ok: true, event };
+}
+
+// ──────────────────────────────────────────────
+//  POST /api/events/:id/verify-access
+//  Pre-deposit gate: run off-chain eligibility WITHOUT requiring a deposit so
+//  the frontend can block wrong-password / ineligible attempts before any
+//  USDC is locked on-chain.
+// ──────────────────────────────────────────────
+router.post("/:id/verify-access", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { wallet_address, password } = req.body;
+
+    const eligibility = await checkRegistrationEligibility(id, wallet_address, password);
+    if (!eligibility.ok) {
+      return res.status(eligibility.code).json({ error: eligibility.error });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /api/events/:id/verify-access error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post("/:id/register", async (req, res) => {
   try {
     const { id } = req.params;
@@ -230,80 +347,14 @@ router.post("/:id/register", async (req, res) => {
       return res.status(400).json({ error: "Missing wallet_address or tx_hash" });
     }
 
-    // Verify event exists and is in setup status
-    const { data: event, error: eventErr } = await supabase
-      .from("events")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (eventErr || !event) return res.status(404).json({ error: "Event not found" });
-    if (event.status !== "setup") {
-      return res.status(400).json({ error: "Event registration is closed" });
+    // Off-chain eligibility (status, roster lock, capacity, creator guard,
+    // reputation, password, whitelist, duplicate). Same checks the frontend
+    // runs via /verify-access BEFORE depositing — re-run here as defense in
+    // depth in case /register is called directly.
+    const eligibility = await checkRegistrationEligibility(id, wallet_address, password);
+    if (!eligibility.ok) {
+      return res.status(eligibility.code).json({ error: eligibility.error });
     }
-    if (event.roster_locked) {
-      return res.status(400).json({ error: "Registration is closed (roster locked)" });
-    }
-
-    // Check participant limit
-    const { data: participantsForLimit } = await supabase
-      .from("participants")
-      .select("id")
-      .eq("event_id", id);
-    const currentCount = participantsForLimit?.length ?? 0;
-    if (event.max_participants && currentCount >= event.max_participants) {
-      return res.status(400).json({ error: `Registration rejected. Tournament is full (${event.max_participants} participants).` });
-    }
-
-    // ── Creator Restriction Guard ──
-    if (wallet_address.toLowerCase() === event.creator_address.toLowerCase()) {
-      return res.status(403).json({ error: "Creator cannot register to their own tournament" });
-    }
-
-    // ── Reputation Guard Check (HP/Reputation Score must be >= 50) ──
-    const repData = await getRegeneratedReputation(wallet_address);
-    const currentReputation = repData.current_hp;
-    
-    if (currentReputation < 50) {
-      return res.status(403).json({
-        error: `Registration rejected. Your reputation HP (${currentReputation}/100) is in penalty/recovery (min 50). HP regenerates +1 over time — try again shortly.`,
-      });
-    }
-
-    // ── Password Validation Guard ──
-    if (event.access_type === "password") {
-      if (!password || typeof password !== "string") {
-        return res.status(400).json({ error: "Password is required for this tournament" });
-      }
-      const passwordValid = await bcrypt.compare(password, event.password_hash);
-      if (!passwordValid) {
-        return res.status(403).json({ error: "Invalid tournament password" });
-      }
-    }
-
-    // ── Invite-Only Whitelist Guard ──
-    if (event.access_type === "invite_only") {
-      const { data: whitelistEntry } = await supabase
-        .from("event_whitelist")
-        .select("id")
-        .eq("event_id", id)
-        .eq("wallet_address", wallet_address.toLowerCase())
-        .single();
-
-      if (!whitelistEntry) {
-        return res.status(403).json({ error: "You are not invited to this tournament" });
-      }
-    }
-
-    // Check duplicate registration
-    const { data: existing } = await supabase
-      .from("participants")
-      .select("id")
-      .eq("event_id", id)
-      .eq("wallet_address", wallet_address)
-      .single();
-
-    if (existing) return res.status(409).json({ error: "Already registered" });
 
     // ── Double Blockchain Verification: Blockscout API & Direct RPC ──
     let isTxSuccess = false;
@@ -790,47 +841,6 @@ router.post("/:id/distribute", async (req, res) => {
     res.json({ message: "Distribution triggered successfully", quorum_percent: quorumPercent });
   } catch (err) {
     console.error("POST /api/events/:id/distribute error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ──────────────────────────────────────────────
-//  POST /api/events/:id/remove-participant — Remove participant (creator only, setup phase)
-// ──────────────────────────────────────────────
-router.post("/:id/remove-participant", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { creator_address, wallet_address } = req.body;
-
-    if (!creator_address || !wallet_address) {
-      return res.status(400).json({ error: "Missing creator_address or wallet_address" });
-    }
-
-    const { data: event } = await supabase
-      .from("events")
-      .select("creator_address, status")
-      .eq("id", id)
-      .single();
-
-    if (!event) return res.status(404).json({ error: "Event not found" });
-    if (event.status !== "setup") {
-      return res.status(400).json({ error: "Can only remove participants during setup phase" });
-    }
-    if (event.creator_address.toLowerCase() !== creator_address.toLowerCase()) {
-      return res.status(403).json({ error: "Only the event creator can remove participants" });
-    }
-
-    const { error: delErr } = await supabase
-      .from("participants")
-      .delete()
-      .eq("event_id", id)
-      .eq("wallet_address", wallet_address);
-
-    if (delErr) throw delErr;
-
-    res.json({ message: "Participant removed", wallet_address });
-  } catch (err) {
-    console.error("POST /api/events/:id/remove-participant error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1626,3 +1636,4 @@ module.exports.getStartBracketGuardError = getStartBracketGuardError;
 module.exports.applyMinorityPenalty = applyMinorityPenalty;
 module.exports.generateNextRoundBrackets = generateNextRoundBrackets;
 module.exports.resolveMyVote = resolveMyVote;
+module.exports.checkRegistrationEligibility = checkRegistrationEligibility;

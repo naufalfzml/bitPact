@@ -170,9 +170,10 @@ test("whitelist add without addresses => 400", async () => {
   assert.equal(res.status, 400);
 });
 
-test("remove-participant without fields => 400", async () => {
-  const res = await post("/api/events/some-id/remove-participant", {});
+test("verify-access without wallet_address => 400", async () => {
+  const res = await post("/api/events/some-id/verify-access", {});
   assert.equal(res.status, 400);
+  assert.match((await res.json()).error, /wallet_address/);
 });
 
 test("retry-settlement without caller_address => 400", async () => {

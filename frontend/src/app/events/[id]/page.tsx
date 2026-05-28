@@ -188,11 +188,33 @@ export default function EventDetailPage() {
     }
     setRegistering(true);
     setPasswordError(null);
-    setStatusMessage("STEP 1: APPROVING USDC TRANSACTIONS...");
     try {
+      // STEP 0: Verify eligibility (password, whitelist, capacity, reputation,
+      // etc.) BEFORE any on-chain deposit. This prevents a wrong password (or
+      // other off-chain rejection) from happening AFTER the user already
+      // locked USDC in the vault.
+      setStatusMessage("CHECKING ACCESS...");
+      const preRes = await fetch(`${API_BASE_URL}/events/${event.id}/verify-access`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet_address: address,
+          password: event.access_type === "password" ? passwordOverride : undefined,
+        }),
+      });
+      if (!preRes.ok) {
+        const preData = await preRes.json().catch(() => ({}));
+        const msg = preData.error || "You are not eligible to register for this tournament.";
+        if (preRes.status === 403 && event.access_type === "password") {
+          setPasswordError(msg);
+        }
+        throw new Error(msg);
+      }
+
       const ticketPriceUnits = parseUnits(String(event.ticket_price), 6);
       const eventIdBytes32 = keccak256(stringToBytes(event.id));
 
+      setStatusMessage("STEP 1: APPROVING USDC TRANSACTIONS...");
       // 1. Approve USDC Transfer
       const approveTx = await writeContractAsync({
         address: USDC_TOKEN_ADDRESS,
@@ -1117,7 +1139,6 @@ export default function EventDetailPage() {
                     <tr>
                       <th>PLAYER</th>
                       <th>STATUS</th>
-                      {isCreator && event.status === "setup" && <th>ACTION</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -1139,27 +1160,6 @@ export default function EventDetailPage() {
                             {p.status.toUpperCase()}
                           </span>
                         </td>
-                        {isCreator && event.status === "setup" && (
-                          <td>
-                            <button
-                              className="bp-btn-delete"
-                              onClick={async () => {
-                                if (!confirm(`Remove ${generateGamerTag(p.wallet_address)} from the roster?`)) return;
-                                try {
-                                  const res = await fetch(`${API_BASE_URL}/events/${event.id}/remove-participant`, {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ creator_address: address, wallet_address: p.wallet_address }),
-                                  });
-                                  if (!res.ok) throw new Error("Failed");
-                                  fetchEventDetail();
-                                } catch { toast.error("Failed to remove participant."); }
-                              }}
-                            >
-                              ■ DEL ■
-                            </button>
-                          </td>
-                        )}
                       </tr>
                     ))}
                   </tbody>
