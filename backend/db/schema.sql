@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS events (
     team_size           INT DEFAULT 1,
     ticket_price        NUMERIC NOT NULL CHECK (ticket_price >= 0),
     consensus_threshold NUMERIC DEFAULT 51 CHECK (consensus_threshold > 0 AND consensus_threshold <= 100),
-    photo_required      BOOLEAN DEFAULT false,
     status              TEXT DEFAULT 'setup' CHECK (status IN ('setup', 'active', 'voting', 'ended', 'disputed')),
     winners_submitted_at TIMESTAMP,
     created_at          TIMESTAMP DEFAULT NOW()
@@ -29,8 +28,7 @@ CREATE TABLE IF NOT EXISTS participants (
     event_id            UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     wallet_address      TEXT NOT NULL,
     team_id             INT,
-    status              TEXT DEFAULT 'registered' CHECK (status IN ('registered', 'eliminated', 'winner')),
-    uploaded_photo_url  TEXT
+    status              TEXT DEFAULT 'registered' CHECK (status IN ('registered', 'eliminated', 'winner'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_participants_event ON participants (event_id);

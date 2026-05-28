@@ -13,7 +13,6 @@ interface Participant {
   wallet_address: string;
   team_id: number | null;
   status: "registered" | "eliminated" | "winner";
-  uploaded_photo_url: string | null;
 }
 
 interface BracketMatch {
@@ -32,7 +31,6 @@ interface EventDetail {
   team_size: number;
   ticket_price: string;
   consensus_threshold: number;
-  photo_required: boolean;
   status: "setup" | "active" | "voting" | "ended" | "disputed" | "settlement_failed";
   creator_address: string;
   created_at: string;
@@ -67,8 +65,6 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Settlement recovery state (status === "settlement_failed")
   const [isRetrying, setIsRetrying] = useState(false);
@@ -549,57 +545,6 @@ export default function EventDetailPage() {
     }
   };
 
-  // ── Photo Audit Upload Flow ──
-  const PHOTO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB, mirrored on the backend
-
-  const handlePhotoFileChange = (file: File | null) => {
-    if (!file) {
-      setPhotoFile(null);
-      return;
-    }
-    if (!file.type.startsWith("image/")) {
-      toast.error("Only image files are allowed.");
-      return;
-    }
-    if (file.size > PHOTO_MAX_BYTES) {
-      toast.error("Photo must be 5MB or smaller.");
-      return;
-    }
-    setPhotoFile(file);
-  };
-
-  const handlePhotoUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!photoFile || !address) return;
-    if (photoFile.size > PHOTO_MAX_BYTES) {
-      toast.error("Photo must be 5MB or smaller.");
-      return;
-    }
-
-    setUploadingPhoto(true);
-    const formData = new FormData();
-    formData.append("photo", photoFile);
-    formData.append("wallet_address", address);
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/events/${event.id}/photo`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        const detail = await res.json().catch(() => ({}));
-        throw new Error(detail.error || "Failed to upload photo proof");
-      }
-      toast.success("Photo proof uploaded successfully.");
-      setPhotoFile(null);
-      fetchEventDetail();
-    } catch (err: any) {
-      toast.error(`Upload error: ${err.message}`);
-    } finally {
-      setUploadingPhoto(false);
-    }
-  };
-
   // ── Dispute Appeal Flow ──
   const handleAppeal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -919,65 +864,6 @@ export default function EventDetailPage() {
             )}
           </div>
 
-          {event.photo_required && isRegistered && myParticipantObj?.status === "winner" && (
-            <div className="bp-card bp-panel-warning">
-              <h3 className="bp-card-title" data-tone="warning">■ Photo Audit Proof Required ■</h3>
-              <p className="bp-card-copy bp-mb-md">
-                Jury designated you as a winner! You MUST upload screenshot proof of your match results before rewards can be unlocked.
-              </p>
-              {myParticipantObj.uploaded_photo_url ? (
-                <div>
-                  <p className="bp-text-xs bp-text-green">✓ PHOTO SUBMITTED SUCCESSFULY</p>
-                  <a
-                    href={myParticipantObj.uploaded_photo_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="bp-text-xs"
-                    style={{ textDecoration: "underline" }}
-                  >
-                    View uploaded proof image
-                  </a>
-                </div>
-              ) : (
-                <form onSubmit={handlePhotoUpload} className="bp-flex bp-flex-col bp-gap-sm">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handlePhotoFileChange(e.target.files?.[0] || null)}
-                    required
-                    style={{ fontFamily: "var(--bp-font)", fontSize: "0.5rem" }}
-                  />
-                  {photoFile && (
-                    <div style={{ marginTop: "6px" }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={URL.createObjectURL(photoFile)}
-                        alt="Selected photo preview"
-                        style={{
-                          maxWidth: "200px",
-                          maxHeight: "200px",
-                          border: "2px solid rgba(245, 232, 95, 0.5)",
-                          imageRendering: "pixelated",
-                          display: "block",
-                        }}
-                      />
-                      <p className="bp-text-xs bp-text-muted" style={{ marginTop: "4px" }}>
-                        {photoFile.name} · {(photoFile.size / 1024).toFixed(1)} KB
-                      </p>
-                    </div>
-                  )}
-                  <p className="bp-text-xs bp-text-muted">Max 5 MB. Images only.</p>
-                  <button
-                    type="submit"
-                    className="bp-btn bp-btn-accent"
-                    disabled={uploadingPhoto || !photoFile}
-                  >
-                    {uploadingPhoto ? "UPLOADING..." : "Submit Proof Screen"}
-                  </button>
-                </form>
-              )}
-            </div>
-          )}
 
           {["voting", "ended", "disputed"].includes(event.status) && (
             <div className="bp-card bp-panel-info">

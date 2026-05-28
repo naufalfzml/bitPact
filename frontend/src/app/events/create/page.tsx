@@ -12,7 +12,6 @@ export default function CreateEventPage() {
   const [title, setTitle] = useState("");
   const [maxParticipants, setMaxParticipants] = useState<number>(16);
   const [ticketPrice, setTicketPrice] = useState("");
-  const [photoRequired, setPhotoRequired] = useState(false);
   const [consensusThreshold, setConsensusThreshold] = useState(51);
 
   // Private Events state
@@ -65,7 +64,6 @@ export default function CreateEventPage() {
           title,
           max_participants: Number(maxParticipants),
           ticket_price: ticketPrice,
-          photo_required: photoRequired,
           consensus_threshold: Number(consensusThreshold),
           creator_address: address,
           access_type: accessType,
@@ -357,22 +355,6 @@ export default function CreateEventPage() {
             />
           </div>
 
-          {/* Photo Required Toggle */}
-          <div className="bp-field">
-            <label className="bp-label">Audit Requirements</label>
-            <div
-              className={`bp-toggle ${photoRequired ? "active" : ""}`}
-              onClick={() => !loading && setPhotoRequired(!photoRequired)}
-              style={{ marginTop: "8px" }}
-            >
-              <div className="bp-toggle-track">
-                <div className="bp-toggle-thumb" />
-              </div>
-              <span className="bp-text-xs">
-                {photoRequired ? "Photo Proof Required" : "No Photo Proof Required"}
-              </span>
-            </div>
-          </div>
 
           {/* Submit */}
           <div className="bp-flex bp-mt-xl">
