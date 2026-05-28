@@ -362,7 +362,7 @@ export default function CreateEventPage() {
               className="bp-btn bp-btn-primary bp-w-full"
               disabled={loading}
             >
-              {loading ? "INITIALIZING_ON_CHAIN_CONTRACT..." : "■ Deploy Contract"}
+              {loading ? "CREATING TOURNAMENT..." : "■ Create Tournament"}
             </button>
           </div>
         </form>

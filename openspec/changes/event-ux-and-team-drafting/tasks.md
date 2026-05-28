@@ -12,12 +12,12 @@
 
 ## 2. Copy tombol & loading (commit: `fix(frontend): accurate create button + loading copy`)
 
-- [ ] 2.1 `events/create/page.tsx`: tombol submit → idle "■ Create Tournament",
+- [x] 2.1 `events/create/page.tsx`: tombol submit → idle "■ Create Tournament",
       loading "CREATING TOURNAMENT..." (ganti "Deploy Contract" /
       "INITIALIZING_ON_CHAIN_CONTRACT...").
-- [ ] 2.2 `events/[id]/page.tsx`: ganti loading "LOADING_DASHBOARD_PANEL..." →
+- [x] 2.2 `events/[id]/page.tsx`: ganti loading "LOADING_DASHBOARD_PANEL..." →
       copy bersih konsisten (mis. "LOADING EVENT...").
-- [ ] 2.3 (opsional) selaraskan gaya copy loading vote page bila perlu konsistensi.
+- [x] 2.3 (opsional) selaraskan gaya copy loading vote page bila perlu konsistensi.
 
 ## 3. Perbaikan toast dobel (commit: `fix(frontend): toast fires once (strictmode-safe)`)
 

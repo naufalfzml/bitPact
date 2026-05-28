@@ -71,7 +71,7 @@ export default function VotingConsolePage() {
   }, [id, address]);
 
   if (loading) {
-    return <div className="bp-text-center bp-blink bp-text-primary" style={{ padding: "80px 0" }}>SYNCHRONIZING_VOTING_CHANNELS...</div>;
+    return <div className="bp-text-center bp-blink bp-text-primary" style={{ padding: "80px 0" }}>LOADING VOTING...</div>;
   }
 
   if (error || !event) {

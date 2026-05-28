@@ -165,7 +165,7 @@ export default function EventDetailPage() {
   }, [event, address, isCreator, isRegistered, whitelistChecked]);
 
   if (loading) {
-    return <div className="bp-text-center bp-blink bp-text-primary" style={{ padding: "80px 0" }}>LOADING_DASHBOARD_PANEL...</div>;
+    return <div className="bp-text-center bp-blink bp-text-primary" style={{ padding: "80px 0" }}>LOADING EVENT...</div>;
   }
 
   if (!event) {
