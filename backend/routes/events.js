@@ -1510,9 +1510,9 @@ async function resolveConsensus(eventId, isTimeout = false) {
   const isDistribute = agreePercent >= event.consensus_threshold;
   await settleEvent(event, { isDistribute });
 
-  // Minority Penalty: if consensus >= 85%, mark minority voters
-  if (agreePercent >= 85 || agreePercent <= 15) {
-    const majorityIsAgree = agreePercent >= 85;
+  // Minority Penalty: if consensus >= 75%, mark minority voters
+  if (agreePercent >= 75 || agreePercent <= 25) {
+    const majorityIsAgree = agreePercent >= 75;
     const minorityVoters = votes.filter((v) =>
       majorityIsAgree ? !v.is_valid : v.is_valid
     );
