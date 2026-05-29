@@ -1454,11 +1454,18 @@ async function applyMinorityPenalty(eventId, voterAddress, options = {}) {
   const db = options.supabase || supabase;
   const loadReputation = options.getRegeneratedReputation || getRegeneratedReputation;
 
-  const currentHp = (await loadReputation(voterAddress)).current_hp;
+  // Store the address lowercased. votes.voter_address is saved as the wallet
+  // submits it (checksummed / mixed-case), but every reader of
+  // reputation_tracking (getRegeneratedReputation, GET /api/reputation/:wallet)
+  // looks it up with .toLowerCase(). Without normalising here, the penalty row
+  // is written under a casing the lookups can never match — so HP silently
+  // never drops AND the registration HP gate never sees the penalty.
+  const normalizedAddress = voterAddress.toLowerCase();
+  const currentHp = (await loadReputation(normalizedAddress)).current_hp;
   const newScore = Math.max(0, currentHp - 10);
 
   await db.from("reputation_tracking").insert({
-    wallet_address: voterAddress,
+    wallet_address: normalizedAddress,
     event_id: eventId,
     was_minority: true,
     reputation_score: newScore,

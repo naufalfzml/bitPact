@@ -38,6 +38,30 @@ test("minority penalty uses regenerated HP as the new penalty base", async () =>
   });
 });
 
+test("minority penalty stores the address lowercased (matches HP lookups)", async () => {
+  const db = createSupabaseInsertMock();
+  const seenByLookup = [];
+
+  // votes.voter_address is mixed-case (as the wallet submits it). The penalty
+  // row MUST be stored lowercase so getRegeneratedReputation (which lowercases
+  // its lookup) can find it — otherwise HP never drops.
+  const MIXED = "0xAbC123DeF";
+
+  await applyMinorityPenalty("event-789", MIXED, {
+    supabase: db,
+    getRegeneratedReputation: async (addr) => {
+      seenByLookup.push(addr);
+      return { current_hp: 100 };
+    },
+  });
+
+  // Lookup was performed with the lowercased address...
+  assert.equal(seenByLookup[0], MIXED.toLowerCase());
+  // ...and the stored row is lowercased too.
+  assert.equal(db.calls[0].wallet_address, MIXED.toLowerCase());
+  assert.equal(db.calls[0].reputation_score, 90);
+});
+
 test("minority penalty clamps regenerated HP at zero", async () => {
   const db = createSupabaseInsertMock();
 
